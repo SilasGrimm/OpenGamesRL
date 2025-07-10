@@ -12,6 +12,8 @@ import OpenGames.Custom.RLLens (RLLens(RLLens), nActions, State, Action, Reward,
 import OpenGames.Custom.ModifiedRLLens (stepEnvironment)
 
 
+-- Try to get a basic decision game working, but getting compile errors for the 'singleDecisionVerbose game'
+
 singleDecisionVerbose actionSpace payoffFunction = [opengame|
    inputs    :  currentState    ;
    feedback  :      ;

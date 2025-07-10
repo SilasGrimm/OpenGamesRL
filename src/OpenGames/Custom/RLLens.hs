@@ -15,8 +15,8 @@ import System.Random (randomRIO)
 
 data RLLens model dmodel obs update = 
     RLLens {
-        deploy :: model -> obs -> update,
-        adapt :: model -> (obs, update) -> dmodel
+        deploy :: model -> obs -> update ,-- 'forward pass'
+        adapt :: model -> (obs, update) -> dmodel -- 'backward pass' 
     }
 
 
@@ -47,7 +47,7 @@ computeTarget q gamma (s, a, r, s') =
     let maxNext = maximum [ Map.findWithDefault 0 (s', a') q | a' <- [0..nActions-1] ]
   in r + gamma * maxNext
 
--- update logic
+-- QTable update logic
 qUpdate :: Alpha -> QTable -> ((State, Action), Reward) -> QTable
 qUpdate alpha q ((s, a), target) = 
     let old = Map.findWithDefault 0 (s, a) q
@@ -59,7 +59,7 @@ qUpdate alpha q ((s, a), target) =
 qLearningLens :: Alpha -> Gamma -> RLLens QTable QTable Sample Double
 qLearningLens alpha gamma = RLLens
   { deploy = \q (s, a, _, _) ->
-                Map.findWithDefault 0 (s, a) q -- Current Q(s,a)
+                Map.findWithDefault 0 (s, a) q -- current Q(s,a)
 
   , adapt  = \q (sample@(s, a, r, s'), _) ->
                 let target = computeTarget q gamma sample
@@ -69,6 +69,7 @@ qLearningLens alpha gamma = RLLens
 
 --------------- FUNCTIONS FOR TRAINING -----------------
 
+-- one update step
 simulateStep :: RLLens QTable QTable Sample Double -> QTable -> Sample -> QTable
 simulateStep lens q sample =
   let est = deploy lens q sample
@@ -117,7 +118,7 @@ chooseActionEpsilonGreedy q s = do
       let bestAction = fst $ maximumBy (\ (_, q1) (_, q2) -> compare q1 q2) scored
       return bestAction
 
--- one step in environment
+-- one step in (dummy) environment
 -- returns reward and new state
 stepEnvironment :: State -> Action -> (Reward, State)
 stepEnvironment s a 

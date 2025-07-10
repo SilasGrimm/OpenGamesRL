@@ -8,6 +8,9 @@ import Control.Arrow (Kleisli(..))
 
 import System.Random (randomRIO)
 
+-- Try to match the types etc. with the required interface from the OpenGames library
+
+
 -- import OpenGames.Engine.Engine (Stochastic, certainly)
 
 -- qTableToStrategy :: QTable -> Kleisli Stochastic State Action
@@ -15,8 +18,8 @@ import System.Random (randomRIO)
 
 data RLLens model dmodel obs update = 
     RLLens {
-        deploy :: model -> obs -> update,
-        adapt :: model -> (obs, update) -> dmodel
+        deploy :: model -> obs -> update, -- 'forward pass' 
+        adapt :: model -> (obs, update) -> dmodel --'backward pass' 
     }
 
 
@@ -41,13 +44,13 @@ epsilon = 0.1
 
 ----------- FUNCTIONS FOR GENERAL Q-Learning SETUP --------------
 
--- get max possible reward for a sample
+-- get max possible reward for a given sample
 computeTarget :: QTable -> Gamma -> Sample -> Double
 computeTarget q gamma (s, a, r, s') = 
     let maxNext = maximum [ Map.findWithDefault 0 (s', a') q | a' <- [0..nActions-1] ]
   in r + gamma * maxNext
 
--- update logic
+-- qTable update logic
 qUpdate :: Alpha -> QTable -> ((State, Action), Reward) -> QTable
 qUpdate alpha q ((s, a), target) = 
     let old = Map.findWithDefault 0 (s, a) q
@@ -59,7 +62,7 @@ qUpdate alpha q ((s, a), target) =
 qLearningLens :: Alpha -> Gamma -> RLLens QTable QTable Sample Double
 qLearningLens alpha gamma = RLLens
   { deploy = \q (s, a, _, _) ->
-                Map.findWithDefault 0 (s, a) q -- Current Q(s,a)
+                Map.findWithDefault 0 (s, a) q -- current Q(s,a)
 
   , adapt  = \q (sample@(s, a, r, s'), _) ->
                 let target = computeTarget q gamma sample
@@ -117,8 +120,8 @@ chooseActionEpsilonGreedy q s = do
       let bestAction = fst $ maximumBy (\ (_, q1) (_, q2) -> compare q1 q2) scored
       return bestAction
 
--- one step in environment
--- returns reward and new state
+-- one step in (dummy) environment
+-- returns reward
 stepEnvironment :: State -> Action -> Reward
 stepEnvironment s a 
   | s == 0 && a == 1 = 10 
