@@ -12,6 +12,9 @@ extra-source-files:
 library:
   source-dirs: src
   exposed-modules:
+    - OpenGames.Custom.ModifiedRLLens
+    - OpenGames.Custom.RLLens
+    - OpenGames.Custom.SimpleGame
     - OpenGames.Engine.AtomicGames
     - OpenGames.Engine.BayesianGames
     - OpenGames.Engine.Diagnostics
@@ -65,6 +68,8 @@ dependencies:
     - random
     - vector
     - criterion
+    - random
+    - containers
 
 
 

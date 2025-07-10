@@ -1,6 +1,6 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.35.0.
+-- This file has been generated from package.yaml by hpack version 0.37.0.
 --
 -- see: https://github.com/sol/hpack
 
@@ -19,6 +19,9 @@ extra-source-files:
 
 library
   exposed-modules:
+      OpenGames.Custom.ModifiedRLLens
+      OpenGames.Custom.RLLens
+      OpenGames.Custom.SimpleGame
       OpenGames.Engine.AtomicGames
       OpenGames.Engine.BayesianGames
       OpenGames.Engine.Diagnostics
@@ -63,6 +66,7 @@ library
     , ad
     , base >=4.7 && <5
     , comonad
+    , containers
     , criterion
     , extra
     , fgl
@@ -96,6 +100,7 @@ executable open-games-exe
     , ad
     , base >=4.7 && <5
     , comonad
+    , containers
     , criterion
     , extra
     , fgl

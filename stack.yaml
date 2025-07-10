@@ -72,3 +72,9 @@ packages:
 #
 ghc-options:
   "$locals": -fwarn-incomplete-patterns
+
+extra-include-dirs:
+  - /opt/homebrew/opt/libffi/include
+
+extra-lib-dirs:
+  - /opt/homebrew/opt/libffi/lib
