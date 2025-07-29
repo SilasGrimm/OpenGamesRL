@@ -66,6 +66,8 @@ qLearningLens alpha gamma = RLLens
                 in qUpdate alpha q ((s, a), target)
   }
 
+--(D A)^S
+
 
 --------------- FUNCTIONS FOR TRAINING -----------------
 

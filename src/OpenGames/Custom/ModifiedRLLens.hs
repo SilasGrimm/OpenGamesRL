@@ -7,6 +7,8 @@ import Data.Foldable (maximumBy)
 import Control.Arrow (Kleisli(..))
 
 import System.Random (randomRIO)
+import OpenGames.Custom.RLLens (QTable, State, Action, Reward, computeTarget, qUpdate)
+import OpenGames.Engine.BayesianGames (distFromList)
 
 -- Try to match the types etc. with the required interface from the OpenGames library
 
@@ -16,165 +18,62 @@ import System.Random (randomRIO)
 -- qTableToStrategy :: QTable -> Kleisli Stochastic State Action
 -- qTableToStrategy q = Kleisli $ \s -> certainly (chooseGreedy q s)
 
-data RLLens model dmodel obs update = 
-    RLLens {
-        deploy :: model -> obs -> update, -- 'forward pass' 
-        adapt :: model -> (obs, update) -> dmodel --'backward pass' 
+alpha = 0.05
+gamma = 0.95
+
+type Prob = Double
+
+data QLens qTable state action reward = 
+    QLens {
+        deploy :: qTable -> state -> [(action, reward)], -- 'forward map' 
+        adapt :: qTable -> (state, action, reward, state) -> qTable -- 'backward map' 
     }
 
+-- createProbabilitiesFromRewards :: [(Action, Reward)] -> [(Action, Prob)]
+-- createProbabilitiesFromRewards xs = 
+--   let maxReward = maximum (map snd xs)
+--       maxRewardPairs = filter (\(a, r) -> r == maxReward) xs
+--       maxRewardCount = fromIntegral $ length maxRewardPairs
+--       otherRewardPairs = filter (\(a, r) -> r /= maxReward) xs
+--       otherRewardCount = fromIntegral $ length otherRewardPairs
 
----------------- Q-learning ------------------
+--       maxRewardDist = map (\(a, r) -> (a, if otherRewardCount == 0 then 1 / maxRewardCount else (1 - alpha) / maxRewardCount)) maxRewardPairs
+--       otherRewardDist = [(a, if maxRewardCount == 0 then 1 / otherRewardCount else alpha / otherRewardCount) | (a, r) <- otherRewardPairs]
+--   in maxRewardDist ++ otherRewardDist
 
-type State = Int
-type Action = Int
-type Reward = Double
-type QTable = Map (State, Action) Double
-type Alpha = Double
-type Gamma = Double
+-- for this to work rewards must be >= 0
+createProbabilitiesFromRewards :: [(Action, Reward)] -> [(Action, Prob)]
+createProbabilitiesFromRewards xs
+  | null xs = []
+  | otherwise =
+      let maxReward = maximum (map snd xs)
+          maxRewardPairs = filter (\(_, r) -> r == maxReward) xs
+          otherRewardPairs = filter (\(_, r) -> r /= maxReward) xs
+          maxCount = fromIntegral $ length maxRewardPairs
+          otherCount = fromIntegral $ length otherRewardPairs
 
-type Sample = (State, Action, Reward, State) -- observation for training
+          maxProb = if otherCount == 0 then 1 / maxCount else (1 - alpha) / maxCount
+          otherProb = if maxCount == 0 then 1 / otherCount else alpha / otherCount
 
--- amount of possible actions
-nActions :: Int
-nActions = 10
+          dist = [(a, maxProb) | (a, _) <- maxRewardPairs] ++
+                 [(a, otherProb) | (a, _) <- otherRewardPairs]
 
--- how greedy the 'model' chooses the best action (low values mean more greediness)
-epsilon :: Double
-epsilon = 0.1
+          total = sum (map snd dist)
+      in [(a, p / total) | (a, p) <- dist]  -- normalize explicitly
 
------------ FUNCTIONS FOR GENERAL Q-Learning SETUP --------------
 
--- get max possible reward for a given sample
-computeTarget :: QTable -> Gamma -> Sample -> Double
-computeTarget q gamma (s, a, r, s') = 
-    let maxNext = maximum [ Map.findWithDefault 0 (s', a') q | a' <- [0..nActions-1] ]
-  in r + gamma * maxNext
-
--- qTable update logic
-qUpdate :: Alpha -> QTable -> ((State, Action), Reward) -> QTable
-qUpdate alpha q ((s, a), target) = 
-    let old = Map.findWithDefault 0 (s, a) q
-        new = (1 - alpha) * old + alpha * target
-    in Map.insert (s, a) new q
-
--- deploy: get reward for Q(s, a)
--- adapt: Update QTable from a given sample
-qLearningLens :: Alpha -> Gamma -> RLLens QTable QTable Sample Double
-qLearningLens alpha gamma = RLLens
-  { deploy = \q (s, a, _, _) ->
-                Map.findWithDefault 0 (s, a) q -- current Q(s,a)
-
-  , adapt  = \q (sample@(s, a, r, s'), _) ->
+qLearningLensNew :: QLens QTable State Action Reward
+qLearningLensNew = QLens 
+  {
+    deploy = \qTable -> (\s -> createProbabilitiesFromRewards [(a, r) | ((s', a), r) <- Map.toList qTable, s' == s]) -- gets a qTable as argument and returns a function from a state to a distribution of actions for that state
+    , 
+    adapt = \q sample@(s, a, r, s') ->
                 let target = computeTarget q gamma sample
                 in qUpdate alpha q ((s, a), target)
   }
 
+testLensForward :: QLens QTable State Action Reward -> QTable -> State -> IO ()
+testLensForward lens qTable state = print $ deploy lens qTable state
 
---------------- FUNCTIONS FOR TRAINING -----------------
-
-simulateStep :: RLLens QTable QTable Sample Double -> QTable -> Sample -> QTable
-simulateStep lens q sample =
-  let est = deploy lens q sample
-  in adapt lens q (sample, est)
-
-testSamples :: [Sample]
-testSamples = [ (0, 1, 1.0, 1)
-              , (1, 2, 0.5, 2)
-              , (2, 3, 1.5, 3)
-              ]
-
-train :: Int -> QTable -> [Sample] -> QTable
-train 0 q _ = q
-train _ q [] = q
-train n q (s:ss) =
-  let 
-    qLens :: RLLens QTable QTable Sample Double
-    qLens = qLearningLens 0.1 0.99
-
-    q' = simulateStep qLens q s
-
-    in train (n - 1) q' ss
-
-
-
------------- FUNCTIONS FOR TRAINING ONLINE IN ENVIRONMENT --------------
-
--- chooses the best action from the QTable greedily
-chooseActionGreedy :: QTable -> State -> Action
-chooseActionGreedy q s =
-  let actions = [0..nActions - 1]
-      scored = [(a, Map.findWithDefault 0 (s, a) q) | a <- actions]
-    in fst $ maximumBy (\ (_, q1) (_, q2) -> compare q1 q2) scored
-
--- chooses the best action from the QTable given a certain state based on an epsilon-greedy policy
-chooseActionEpsilonGreedy :: QTable -> State -> IO Action     
-chooseActionEpsilonGreedy q s = do
-  let actions = [0..nActions - 1]
-      scored = [(a, Map.findWithDefault 0 (s, a) q) | a <- actions]
-  r <- randomRIO(0.0, 1.0)
-  if r < epsilon
-    then do
-      randomIndex <- randomRIO(0, nActions - 1)
-      return (actions !! randomIndex)
-    else do
-      let bestAction = fst $ maximumBy (\ (_, q1) (_, q2) -> compare q1 q2) scored
-      return bestAction
-
--- one step in (dummy) environment
--- returns reward
-stepEnvironment :: State -> Action -> Reward
-stepEnvironment s a 
-  | s == 0 && a == 1 = 10 
-  | s == 1 && a == 5 = 12
-  | s == 2 && a == 3 = 6
-  | s == 3 && a == 7 = -2
-  | s == 4 && a == 8 = -1
-  | s == 5 && a == 4 = 5
-  | s == 6 && a == 5 = 1
-  | otherwise = -3
-
-
-
--- one step in the environment
--- takes a 'model', QTable and current state, chooses an action, updates the q values according to the reward, and finally returns the new QTable and state
--- trainStep :: RLLens QTable QTable Sample Double -> QTable -> State -> IO (QTable, State)
--- trainStep qLens q s = do
---           let a = chooseActionGreedy q s
---               (r, s') =  stepEnvironment s a
---               sample = (s, a, r, s')
---               q' = simulateStep qLens q sample
---           return (q', s')
-
--- trainStepEpsilonGreedy :: RLLens QTable QTable Sample Double -> QTable -> State -> IO (QTable, State)
--- trainStepEpsilonGreedy qLens q s = do
---             a <- chooseActionEpsilonGreedy q s
---             let (r, s') =  stepEnvironment s a
---                 sample = (s, a, r, s')
---                 q' = simulateStep qLens q sample
---             return (q', s')
-
--- -- trains the 'model' for n iterations
--- trainOnline :: Int -> QTable -> State -> IO (QTable)
--- trainOnline 0 q s = return q
--- trainOnline n q s = do
---     let qLens = qLearningLens 0.1 0.99
---     (q', s') <- trainStep qLens q s
---     trainOnline (n - 1) q' s'
-
--- trainOnlineEpsilonGreedy :: Int -> QTable -> State -> IO (QTable)
--- trainOnlineEpsilonGreedy 0 q s = return q
--- trainOnlineEpsilonGreedy n q s = do
---     let qLens = qLearningLens 0.1 0.99
---     (q', s') <- trainStepEpsilonGreedy qLens q s
---     putStrLn $ " From " ++  show s ++ " to " ++ show s' 
---     print q'
---     trainOnlineEpsilonGreedy (n - 1) q' s'
-
-
--- testTrain = train 3 Map.empty testSamples
--- testTrainOnline = trainOnline 100 Map.empty 0
-
--- testTrainOnlineEpsilon = trainOnlineEpsilonGreedy 10 Map.empty 0
-
-
-
+testLensBackward :: QLens QTable State Action Reward -> QTable -> State -> Action -> Reward -> State -> IO ()
+testLensBackward lens qTable state action reward state' = print $ Map.toList $ adapt lens qTable (state, action, reward, state')

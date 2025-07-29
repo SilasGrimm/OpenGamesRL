@@ -14,7 +14,9 @@ library:
   exposed-modules:
     - OpenGames.Custom.ModifiedRLLens
     - OpenGames.Custom.RLLens
-    - OpenGames.Custom.SimpleGame
+    - OpenGames.Custom.PrisonersDilemmaRepeated
+    - OpenGames.Custom.PrisonersDilemma
+    - OpenGames.Custom.PrisonersDilemmaExternal
     - OpenGames.Engine.AtomicGames
     - OpenGames.Engine.BayesianGames
     - OpenGames.Engine.Diagnostics
