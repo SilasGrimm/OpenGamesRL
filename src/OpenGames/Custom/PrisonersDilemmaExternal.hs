@@ -55,7 +55,7 @@ playQLearning =
                 player2QTable = Map.fromList [((0, 0), 0), ((0, 1), 0)] -- we initialize with reward 0 for both actions
                 
 
-            playStep player1QTable player2QTable 3
+            playStep player1QTable player2QTable 3 -- play 3 steps
 
 playStep :: QTable -> QTable -> Int -> IO ()
 playStep _ _ 0 = return ()
@@ -74,15 +74,15 @@ playStep player1QTable player2QTable n = do
                     nextgame = play prisonersDilemmaExternal strategy
                 ((payoffPlayer1, payoffPlayer2), _) <- extractPayoffAndNextState nextgame () ()
 
-                putStrLn $ "Action1: " ++ show actionPlayer1 ++ " | Reward1: " ++ show payoffPlayer1 ++ " | QTable1: " ++ show player1ActionDist
-                putStrLn $ "Action2: " ++ show actionPlayer2 ++ " | Reward2: " ++ show payoffPlayer2 ++ " | QTable2: " ++ show player2ActionDist
+                putStrLn $ "Action1: " ++ show actionPlayer1 ++ " | Reward1: " ++ show payoffPlayer1 ++ " | ActionDist1: " ++ show player1ActionDist
+                putStrLn $ "Action2: " ++ show actionPlayer2 ++ " | Reward2: " ++ show payoffPlayer2 ++ " | ActionDist2: " ++ show player2ActionDist
 
                 let player1q' = adapt qLearningLensNew player1QTable (0, actionPlayer1, payoffPlayer1, 0)
                     player2q' = adapt qLearningLensNew player2QTable (0, actionPlayer2, payoffPlayer2, 0)
 
 
-                print player1q'
                 print $ distFromList $ Map.toList player1q'
+                print $ distFromList $ Map.toList player2q'
 
                 playStep player1q' player2q' (n - 1)
                 

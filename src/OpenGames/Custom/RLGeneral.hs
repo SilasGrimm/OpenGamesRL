@@ -1,0 +1,124 @@
+module OpenGames.Custom.RLGeneral where
+
+import Data.Map (Map)
+import qualified Data.Map as Map
+import Data.Foldable (maximumBy)
+
+import Control.Arrow (Kleisli(..))
+
+import System.Random (randomRIO)
+
+-- Type aliases
+type Reward = Double
+type Prob   = Double
+type Alpha  = Double
+type Gamma  = Double
+
+-- QTable maps (state, action) to expected reward
+type QTable state action = Map (state, action) Reward
+
+type Sample state action = (state, action, Reward, state)
+
+computeTarget :: (Ord state, Ord action)
+              => QTable state action
+              -> Gamma
+              -> (state -> [action])       -- function to get valid actions for a state
+              -> Sample state action
+              -> Reward
+computeTarget q gamma getActions (s, a, r, s') =
+    let actions = getActions s'
+        maxNext = case actions of
+                    [] -> 0
+                    _  -> maximum [ Map.findWithDefault 0 (s', a') q | a' <- actions ]
+    in r + gamma * maxNext
+
+getMaxRewardAction :: (Ord state, Ord action) => QTable state action -> state -> action
+getMaxRewardAction q s = let 
+    list = Map.toList q
+    filteredList = filter (\((s', a), r) -> s == s') list
+
+    maxStateActionRewardPair = foldl (\acc ((s, a), r) -> if r > snd acc then ((s, a), r) else acc) (head filteredList) filteredList
+
+  in snd $ fst maxStateActionRewardPair 
+
+
+qUpdate :: (Ord state, Ord action)
+        => Alpha
+        -> QTable state action
+        -> ((state, action), Reward)
+        -> QTable state action
+qUpdate alpha q ((s, a), target) =
+    let old = Map.findWithDefault 0 (s, a) q
+        new = (1 - alpha) * old + alpha * target
+    in Map.insert (s, a) new q
+
+data QLens qTable state action reward =
+    QLens
+      { deploy :: qTable -> state -> [(action, reward)]  -- forward map
+      , adapt  :: qTable -> Sample state action -> qTable -- backward update
+      }
+
+qLearningLens :: (Ord state, Ord action)
+              => Alpha
+              -> Gamma
+              -> (state -> [action])   -- function to get valid actions
+              -> QLens (QTable state action) state action Reward
+qLearningLens alpha gamma getActions = QLens
+  { deploy = \q s ->
+                createGreedyProbabilitiesFromRewards [ (a, Map.findWithDefault 0 (s, a) q)
+                | a <- getActions s ]
+  , adapt  = \q sample@(s, a, _, _) ->
+                let target = computeTarget q gamma getActions sample
+                in qUpdate alpha q ((s, a), target)
+  }
+
+createProbabilitiesFromRewards :: [(action, Reward)] -> [(action, Prob)]
+createProbabilitiesFromRewards xs
+  | null xs = []
+  | otherwise =
+      let maxReward = maximum (map snd xs)
+          maxRewardPairs = filter (\(_, r) -> r == maxReward) xs
+          otherRewardPairs = filter (\(_, r) -> r /= maxReward) xs
+          maxCount = fromIntegral $ length maxRewardPairs
+          otherCount = fromIntegral $ length otherRewardPairs
+
+          maxProb = if otherCount == 0 then 1 / maxCount else (1 - alpha) / maxCount
+          otherProb = if maxCount == 0 then 1 / otherCount else alpha / otherCount
+
+          dist = [(a, maxProb) | (a, _) <- maxRewardPairs] ++
+                 [(a, otherProb) | (a, _) <- otherRewardPairs]
+
+          total = sum (map snd dist)
+      in [(a, p / total) | (a, p) <- dist]  -- normalize explicitly
+
+createGreedyProbabilitiesFromRewards :: [(action, Reward)] -> [(action, Prob)]
+createGreedyProbabilitiesFromRewards xs 
+  | null xs = []
+  | otherwise = 
+    let maxReward = maximum (map snd xs)
+        maxRewardCount = length $ filter (\(_, r) -> r == maxReward) xs 
+    in map (\(a, r) -> if r == maxReward then (a, 1 / fromIntegral maxRewardCount) else (a, 0)) xs
+    
+
+testLensForward :: QLens (QTable (Int, Int) Int) (Int, Int) Int Reward -> QTable (Int, Int) Int -> (Int, Int) -> IO ()
+testLensForward lens qTable state = print $ deploy lens qTable state
+
+testLensBackward :: QLens (QTable (Int, Int) Int) (Int, Int) Int Reward -> QTable (Int, Int) Int -> (Int, Int) -> Int -> Reward -> (Int, Int) -> IO ()
+testLensBackward lens qTable state action reward state' = print $ Map.toList $ adapt lens qTable (state, action, reward, state')
+
+alpha = 0.00
+gamma = 0.95
+
+qlens = qLearningLens alpha gamma
+
+qTable :: QTable (Int, Int) Int
+qTable = Map.fromList [(((0, 0), 0), 0), (((0, 1), 0), 0), (((1, 0), 0), 0), (((1, 1), 0), 0),
+                       (((0, 0), 1), 0), (((0, 1), 1), 0), (((1, 0), 1), 0), (((1, 1), 1), 0)]
+
+-- test forward deployment
+testForward q = deploy (qlens (\s -> [0, 1])) q (1, 0)
+
+testBackward = adapt (qlens (\s -> [0, 1])) qTable ((1, 0), 1, 5, (1, 0))
+
+sample :: [(action, Reward)] -> action
+sample 

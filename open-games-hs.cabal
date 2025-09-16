@@ -24,6 +24,8 @@ library
       OpenGames.Custom.PrisonersDilemmaRepeated
       OpenGames.Custom.PrisonersDilemma
       OpenGames.Custom.PrisonersDilemmaExternal
+      OpenGames.Custom.OptionExercise
+      OpenGames.Custom.RLGeneral
       OpenGames.Engine.AtomicGames
       OpenGames.Engine.BayesianGames
       OpenGames.Engine.Diagnostics

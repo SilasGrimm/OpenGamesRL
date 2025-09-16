@@ -18,7 +18,7 @@ import OpenGames.Engine.BayesianGames (distFromList)
 -- qTableToStrategy :: QTable -> Kleisli Stochastic State Action
 -- qTableToStrategy q = Kleisli $ \s -> certainly (chooseGreedy q s)
 
-alpha = 0.05
+alpha = 0.05 -- we reach the nash equilibrium if alpha = 0 (we always take the best action)
 gamma = 0.95
 
 type Prob = Double

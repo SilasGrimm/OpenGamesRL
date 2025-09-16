@@ -16,54 +16,62 @@ import OpenGames.Engine.ExternalEnvironment (extractPayoffAndNextState)
 
 import Data.Map (Map)
 import qualified Data.Map as Map
-import Control.Arrow (Kleisli)
+import Control.Arrow (Kleisli (Kleisli))
 import qualified Control.Applicative as Vector
 
-prisonersDilemmaInternal qTable1 qTable2 = [opengame|
+------- Overall workflow / Minimal goal ------
+-- 1. Learn strategy
+-- 2. Use OpenGames to verify if strategy is in equilibrium
+
+------- Small goal -------------
+-- 3. Implement games for several problems
+--    Implement with alternative RL algorithms
+
+------- Large goal -------------
+-- 4. Define Game, automatically learn strategy for game and check if in equilibrium
+--    Find class of games where this is possible
+
+-- Einführung:
+--    RL, Category theory, OpenGames
+
+prisonersDilemmaInternal = [opengame|
    inputs    :    ;
-   feedback  : (payoff1,payoff2)     ;
+   feedback  :    ;
    :----------------------------:
-   inputs    :  qTable1    ;
-   feedback  : payoff1    ;
+   inputs    :    ;
+   feedback  :    ;
    operation : dependentDecision "player1" (const [0, 1]) ;
    outputs   : decisionPlayer1 ;
    returns   : prisonersDilemmaMatrix decisionPlayer1 decisionPlayer2 ;
 
-   inputs    : qTable2     ;
-   feedback  : payoff2    ;
+   inputs    :     ;
+   feedback  :     ;
    operation : dependentDecision "player2" (const [0, 1]) ;
    outputs   : decisionPlayer2 ;
    returns   : prisonersDilemmaMatrix decisionPlayer2 decisionPlayer1 ;
    :----------------------------:
-   outputs   : (decisionPlayer1, decisionPlayer2)   ;
-   returns   :     ;
+   outputs   :    ;
+   returns   :    ;
 |]
+
 
 initialQTable = Map.fromList [((0, 0), 0), ((0, 1), 0)]
 
--- 0 for staying silent, 1 for confessing
-strategyFromLens :: QLens QTable State Action Reward -> Kleisli Stochastic QTable Action
-strategyFromLens lens = Kleisli $ \qTable ->
-  distFromList $ deploy lens qTable 0
+strategyFromLens :: QTable -> QLens QTable State Action Reward -> Kleisli Stochastic () Action
+strategyFromLens q lens = Kleisli $ \() ->
+  distFromList $ deploy lens q 0
 
-strategy1 :: Kleisli Stochastic QTable Action
-strategy1 = strategyFromLens qLearningLensNew
+strategy1 :: Kleisli Stochastic () Action
+strategy1 = strategyFromLens initialQTable qLearningLensNew
 
-strategy2 :: Kleisli Stochastic QTable Action
-strategy2 = strategyFromLens qLearningLensNew
+strategy2 :: Kleisli Stochastic () Action
+strategy2 = strategyFromLens initialQTable qLearningLensNew
+
+alwaysDefect = Kleisli $ \() ->
+  distFromList $ [(0, 0), (1, 1)]
 
 stratTuple = strategy1 ::- strategy1 ::- Nil
+stratTuple2 = strategy1 ::- alwaysDefect ::- Nil
 
-env :: StochasticStatefulContext () ((), ()) (Action, Action) ()
-env = StochasticStatefulContext
-    (return ((initialQTable, initialQTable), ()))
-    (\(q1, q2) (a1, a2) -> do 
-        let r1 = prisonersDilemmaMatrix a1 a2
-            r2 = prisonersDilemmaMatrix a2 a1
-            q1' = adapt qLearningLensNew q1 (0, a1, r1, 0) -- we are always in state 0 for prisoners dilemma because there is only one state
-            q2' = adapt qLearningLensNew q2 (0, a2, r2, 0)
-        return ()
-    )
-
-isEquilibriumPrisonersDilemmaRepeatedCustom = generateIsEq $ evaluate (prisonersDilemmaInternal initialQTable initialQTable) stratTuple env
+isEquilibriumPrisonersDilemmaCustom = generateIsEq $ evaluate prisonersDilemmaInternal stratTuple void
 

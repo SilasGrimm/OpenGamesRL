@@ -40,6 +40,7 @@ prisonersDilemmaMatrix Defect Defect = 1
 discountFactor = 0.5
 
 
+-- feedback is current reward + past rewards
 prisonersDilemmaCont = [opengame|
 
    inputs    : (dec1Old,dec2Old) ;
