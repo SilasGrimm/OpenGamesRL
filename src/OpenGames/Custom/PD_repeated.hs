@@ -3,20 +3,22 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE LambdaCase #-}
 
-module OpenGames.Custom.PrisonersDilemma where
+module OpenGames.Custom.PD_repeated where
 
 import OpenGames.Engine.Engine
 import OpenGames.Preprocessor
-import OpenGames.Custom.PrisonersDilemmaExternal (prisonersDilemmaMatrix, sample)
+import OpenGames.Custom.PrisonersDilemmaExternal (prisonersDilemmaMatrix, sample, playStep, playQLearning)
 import OpenGames.Custom.RLLens (Action, Reward, QTable, State)
 import OpenGames.Custom.ModifiedRLLens (qLearningLensNew)
 import OpenGames.Custom.ModifiedRLLens
 import OpenGames.Engine.BayesianGames (dependentDecision)
 import OpenGames.Engine.ExternalEnvironment (extractPayoffAndNextState)
 
-import Data.Map (Map)
+import Data.Map (Map, toList)
 import qualified Data.Map as Map
 import Control.Arrow (Kleisli (Kleisli))
+import Control.Monad.IO.Class (MonadIO(liftIO))
+
 import qualified Control.Applicative as Vector
 
 ------- Overall workflow / Minimal goal ------
@@ -54,13 +56,40 @@ prisonersDilemmaInternal = [opengame|
    returns   :    ;
 |]
 
+initialQTable = Map.fromList [((0, 0), 0), ((0, 1), 0)]
 
--- learnPD :: QTable -> QLens QTable State Action Reward -> QTable
--- learnPD q lens = 
---   let dist = deploy lens q 0
-      
+learnPDStrategy :: QTable -> QLens QTable State Action Reward -> IO QTable
+learnPDStrategy q lens = do
+  learningStep q lens 150
+  
 
-initialQTable = Map.fromList [((0, 0), 0), ((0, 1), 1)]
+-- plays n games and returns learned strategy
+learningStep :: QTable -> QLens QTable State Action Reward -> Int -> IO QTable
+learningStep q lens 0 = return q
+learningStep q lens n = do
+  let actionDist = deploy lens q 0
+      opponentAction = 1
+  
+  chosenAction <- sample actionDist -- sample from distribution
+
+  let payoff = prisonersDilemmaMatrix chosenAction opponentAction
+
+  putStrLn $ "Iteration: " ++ show (150 - n)
+  putStrLn $ "QTable: " ++ show (toList q)
+  putStrLn $ "QTable Dist: " ++ show actionDist ++ " | " ++ "Chosen Action: " ++ show chosenAction ++ " | " ++ "Payoff: " ++ show payoff
+
+  let q' = adapt lens q (0, chosenAction, payoff, 0)
+
+  learningStep q' lens (n - 1)
+
+verifyStrategy :: IO QTable -> QLens QTable State Action Reward -> IO ()
+verifyStrategy ioQ lens = do
+    q <- ioQ
+    let learnedStrategy = strategyFromLens q lens
+
+    isEquilibriumPrisonersDilemmaCustom (learnedStrategy ::- alwaysDefect ::- Nil)
+
+checkPDAgent = verifyStrategy (learnPDStrategy initialQTable qLearningLensNew) qLearningLensNewGreedy
 
 strategyFromLens :: QTable -> QLens QTable State Action Reward -> Kleisli Stochastic () Action
 strategyFromLens q lens = Kleisli $ \() ->
@@ -75,8 +104,11 @@ strategy2 = strategyFromLens initialQTable qLearningLensNew
 alwaysDefect = Kleisli $ \() ->
   distFromList $ [(0, 0), (1, 1)]
 
+alwaysStaySilent = Kleisli $ \() ->
+  distFromList $ [(0, 1), (1, 0)]
+
 stratTuple = strategy1 ::- strategy1 ::- Nil
 stratTuple2 = strategy1 ::- alwaysDefect ::- Nil
 
-isEquilibriumPrisonersDilemmaCustom = generateIsEq $ evaluate prisonersDilemmaInternal stratTuple void
+isEquilibriumPrisonersDilemmaCustom strategyTuple = generateIsEq $ evaluate prisonersDilemmaInternal strategyTuple void
 

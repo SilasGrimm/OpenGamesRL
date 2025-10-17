@@ -114,6 +114,13 @@ prisonersDilemmaExternal = [opengame|
    returns   :     ;
   |]
 
+-- testConvergence n = amountOfRightConvergences / n
+--     where amountOfRightConvergences = testConvergenceStep n 0
+
+-- testConvergenceStep 0 acc = acc
+-- testConvergenceStep n acc = acc + check playQLearning
+--     where check :: 
+
 
 -- singleDecisionVerbose actionSpace payoffFunction = [opengame|
 --    inputs    :  currentState    ;

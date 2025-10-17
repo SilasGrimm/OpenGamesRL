@@ -18,7 +18,7 @@ import OpenGames.Engine.BayesianGames (distFromList)
 -- qTableToStrategy :: QTable -> Kleisli Stochastic State Action
 -- qTableToStrategy q = Kleisli $ \s -> certainly (chooseGreedy q s)
 
-alpha = 0.05 -- we reach the nash equilibrium if alpha = 0 (we always take the best action)
+alpha = 0.05
 gamma = 0.95
 
 type Prob = Double
@@ -61,11 +61,29 @@ createProbabilitiesFromRewards xs
           total = sum (map snd dist)
       in [(a, p / total) | (a, p) <- dist]  -- normalize explicitly
 
+createGreedyProbabilitiesFromRewards :: [(Action, Reward)] -> [(Action, Prob)]
+createGreedyProbabilitiesFromRewards xs 
+  | null xs = []
+  | otherwise = 
+    let maxReward = maximum (map snd xs)
+        maxRewardCount = length $ filter (\(_, r) -> r == maxReward) xs 
+    in map (\(a, r) -> if r == maxReward then (a, 1 / fromIntegral maxRewardCount) else (a, 0)) xs
+
 
 qLearningLensNew :: QLens QTable State Action Reward
 qLearningLensNew = QLens 
   {
     deploy = \qTable -> (\s -> createProbabilitiesFromRewards [(a, r) | ((s', a), r) <- Map.toList qTable, s' == s]) -- gets a qTable as argument and returns a function from a state to a distribution of actions for that state
+    , 
+    adapt = \q sample@(s, a, r, s') ->
+                let target = computeTarget q gamma sample
+                in qUpdate alpha q ((s, a), target)
+  }
+
+qLearningLensNewGreedy :: QLens QTable State Action Reward
+qLearningLensNewGreedy = QLens 
+  {
+    deploy = \qTable -> (\s -> createGreedyProbabilitiesFromRewards [(a, r) | ((s', a), r) <- Map.toList qTable, s' == s]) -- gets a qTable as argument and returns a function from a state to a distribution of actions for that state
     , 
     adapt = \q sample@(s, a, r, s') ->
                 let target = computeTarget q gamma sample

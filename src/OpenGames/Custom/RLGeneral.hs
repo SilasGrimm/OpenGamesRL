@@ -65,6 +65,20 @@ qLearningLens :: (Ord state, Ord action)
               -> QLens (QTable state action) state action Reward
 qLearningLens alpha gamma getActions = QLens
   { deploy = \q s ->
+                createProbabilitiesFromRewards [ (a, Map.findWithDefault 0 (s, a) q)
+                | a <- getActions s ] alpha
+  , adapt  = \q sample@(s, a, _, _) ->
+                let target = computeTarget q gamma getActions sample
+                in qUpdate alpha q ((s, a), target)
+  }
+
+qLearningGreedyLens :: (Ord state, Ord action)
+              => Alpha
+              -> Gamma
+              -> (state -> [action])   -- function to get valid actions
+              -> QLens (QTable state action) state action Reward
+qLearningGreedyLens alpha gamma getActions = QLens
+  { deploy = \q s ->
                 createGreedyProbabilitiesFromRewards [ (a, Map.findWithDefault 0 (s, a) q)
                 | a <- getActions s ]
   , adapt  = \q sample@(s, a, _, _) ->
@@ -72,8 +86,8 @@ qLearningLens alpha gamma getActions = QLens
                 in qUpdate alpha q ((s, a), target)
   }
 
-createProbabilitiesFromRewards :: [(action, Reward)] -> [(action, Prob)]
-createProbabilitiesFromRewards xs
+createProbabilitiesFromRewards :: [(action, Reward)] -> Alpha ->  [(action, Prob)]
+createProbabilitiesFromRewards xs alpha
   | null xs = []
   | otherwise =
       let maxReward = maximum (map snd xs)
@@ -106,8 +120,8 @@ testLensForward lens qTable state = print $ deploy lens qTable state
 testLensBackward :: QLens (QTable (Int, Int) Int) (Int, Int) Int Reward -> QTable (Int, Int) Int -> (Int, Int) -> Int -> Reward -> (Int, Int) -> IO ()
 testLensBackward lens qTable state action reward state' = print $ Map.toList $ adapt lens qTable (state, action, reward, state')
 
-alpha = 0.00
-gamma = 0.95
+alpha = 0.1 -- exploration rate
+gamma = 0.95 -- how valuable newer experiences are over old ones
 
 qlens = qLearningLens alpha gamma
 
@@ -120,5 +134,8 @@ testForward q = deploy (qlens (\s -> [0, 1])) q (1, 0)
 
 testBackward = adapt (qlens (\s -> [0, 1])) qTable ((1, 0), 1, 5, (1, 0))
 
-sample :: [(action, Reward)] -> action
-sample 
+sample :: [(action, Reward)] -> IO action
+sample dist = do
+    let cumulative = scanl1 (\(_, acc) (a, p) -> (a, acc + p)) dist
+    r <- randomRIO (0, 1)  -- generate random Double in [0,1]
+    return $ fst $ head $ dropWhile (\(_, p) -> p < r) cumulative
