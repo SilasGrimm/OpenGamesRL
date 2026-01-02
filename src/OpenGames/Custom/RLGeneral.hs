@@ -32,14 +32,14 @@ computeTarget q gamma getActions (s, a, r, s') =
                     _  -> maximum [ Map.findWithDefault 0 (s', a') q | a' <- actions ]
     in r + gamma * maxNext
 
-getMaxRewardAction :: (Ord state, Ord action) => QTable state action -> state -> action
-getMaxRewardAction q s = let 
-    list = Map.toList q
-    filteredList = filter (\((s', a), r) -> s == s') list
+-- getMaxRewardAction :: (Ord state, Ord action) => QTable state action -> state -> action
+-- getMaxRewardAction q s = let 
+--     list = Map.toList q
+--     filteredList = filter (\((s', a), r) -> s == s') list
 
-    maxStateActionRewardPair = foldl (\acc ((s, a), r) -> if r > snd acc then ((s, a), r) else acc) (head filteredList) filteredList
+--     maxStateActionRewardPair = foldl (\acc ((s, a), r) -> if r > snd acc then ((s, a), r) else acc) (head filteredList) filteredList
 
-  in snd $ fst maxStateActionRewardPair 
+--   in snd $ fst maxStateActionRewardPair 
 
 
 qUpdate :: (Ord state, Ord action)
@@ -59,19 +59,22 @@ data QLens qTable state action reward =
       }
 
 qLearningLens :: (Ord state, Ord action)
-              => Alpha
+              => 
+              Double
+              -> Alpha
               -> Gamma
               -> (state -> [action])   -- function to get valid actions
               -> QLens (QTable state action) state action Reward
-qLearningLens alpha gamma getActions = QLens
+qLearningLens epsilon alpha gamma getActions = QLens
   { deploy = \q s ->
                 createProbabilitiesFromRewards [ (a, Map.findWithDefault 0 (s, a) q)
-                | a <- getActions s ] alpha
+                | a <- getActions s ] epsilon
   , adapt  = \q sample@(s, a, _, _) ->
                 let target = computeTarget q gamma getActions sample
                 in qUpdate alpha q ((s, a), target)
   }
 
+-- lens only deploys optimal learned strategy
 qLearningGreedyLens :: (Ord state, Ord action)
               => Alpha
               -> Gamma
@@ -87,7 +90,7 @@ qLearningGreedyLens alpha gamma getActions = QLens
   }
 
 createProbabilitiesFromRewards :: [(action, Reward)] -> Alpha ->  [(action, Prob)]
-createProbabilitiesFromRewards xs alpha
+createProbabilitiesFromRewards xs epsilon
   | null xs = []
   | otherwise =
       let maxReward = maximum (map snd xs)
@@ -96,8 +99,8 @@ createProbabilitiesFromRewards xs alpha
           maxCount = fromIntegral $ length maxRewardPairs
           otherCount = fromIntegral $ length otherRewardPairs
 
-          maxProb = if otherCount == 0 then 1 / maxCount else (1 - alpha) / maxCount
-          otherProb = if maxCount == 0 then 1 / otherCount else alpha / otherCount
+          maxProb = if otherCount == 0 then 1 / maxCount else (1 - epsilon) / maxCount
+          otherProb = if maxCount == 0 then 1 / otherCount else epsilon / otherCount
 
           dist = [(a, maxProb) | (a, _) <- maxRewardPairs] ++
                  [(a, otherProb) | (a, _) <- otherRewardPairs]
@@ -123,7 +126,7 @@ testLensBackward lens qTable state action reward state' = print $ Map.toList $ a
 alpha = 0.1 -- exploration rate
 gamma = 0.95 -- how valuable newer experiences are over old ones
 
-qlens = qLearningLens alpha gamma
+qlens = qLearningLens alpha alpha gamma
 
 qTable :: QTable (Int, Int) Int
 qTable = Map.fromList [(((0, 0), 0), 0), (((0, 1), 0), 0), (((1, 0), 0), 0), (((1, 1), 0), 0),
@@ -139,3 +142,66 @@ sample dist = do
     let cumulative = scanl1 (\(_, acc) (a, p) -> (a, acc + p)) dist
     r <- randomRIO (0, 1)  -- generate random Double in [0,1]
     return $ fst $ head $ dropWhile (\(_, p) -> p < r) cumulative
+
+
+
+----------------------------------------
+
+-- This small adjustment allows for correct handling of terminal states
+-- Should be used in every game, so that the last state transition can be handled correctly
+type Sample' state action = (state, action, Reward, Maybe state)
+
+
+computeTarget' q gamma getActions (s, a, r, Nothing) = r
+computeTarget' q gamma getActions (s, a, r, Just s') =
+    let actions = getActions s'
+        maxNext = if null actions
+                    then 0
+                    else maximum [ Map.findWithDefault 0 (s', a') q | a' <- actions ]
+    in r + gamma * maxNext
+
+-- getMaxRewardAction :: (Ord state, Ord action) => QTable state action -> state -> action
+-- getMaxRewardAction q s = let 
+--     list = Map.toList q
+--     filteredList = filter (\((s', a), r) -> s == s') list
+
+--     maxStateActionRewardPair = foldl (\acc ((s, a), r) -> if r > snd acc then ((s, a), r) else acc) (head filteredList) filteredList
+
+--   in snd $ fst maxStateActionRewardPair 
+
+data QLens' qTable state action reward =
+    QLens'
+      { deploy' :: qTable -> state -> [(action, reward)]  -- forward map
+      , adapt'  :: qTable -> Sample' state action -> qTable -- backward update
+      }
+
+qLearningLens' :: (Ord state, Ord action)
+              => 
+              Double
+              -> Alpha
+              -> Gamma
+              -> (state -> [action])   -- function to get valid actions
+              -> QLens' (QTable state action) state action Reward
+qLearningLens' epsilon alpha gamma getActions = QLens'
+  { deploy' = \q s ->
+                createProbabilitiesFromRewards [ (a, Map.findWithDefault 0 (s, a) q)
+                | a <- getActions s ] epsilon
+  , adapt'  = \q sample@(s, a, _, _) ->
+                let target = computeTarget' q gamma getActions sample
+                in qUpdate alpha q ((s, a), target)
+  }
+
+  -- lens only deploys optimal learned strategy
+qLearningGreedyLens' :: (Ord state, Ord action)
+              => Alpha
+              -> Gamma
+              -> (state -> [action])   -- function to get valid actions
+              -> QLens' (QTable state action) state action Reward
+qLearningGreedyLens' alpha gamma getActions = QLens'
+  { deploy' = \q s ->
+                createGreedyProbabilitiesFromRewards [ (a, Map.findWithDefault 0 (s, a) q)
+                | a <- getActions s ]
+  , adapt'  = \q sample@(s, a, _, _) ->
+                let target = computeTarget' q gamma getActions sample
+                in qUpdate alpha q ((s, a), target)
+  }

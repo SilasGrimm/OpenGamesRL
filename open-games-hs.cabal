@@ -27,8 +27,15 @@ library
       OpenGames.Custom.OptionExercise
       OpenGames.Custom.RLGeneral
       OpenGames.Custom.PD_repeated
+      OpenGames.Custom.PrisonersDilemma_new
       OpenGames.Custom.BoS_repeated
       OpenGames.Custom.Gift_exchange_game_repeated
+      OpenGames.Custom.SimultaneousAuction_repeated
+      OpenGames.Custom.SimultaneousAuction_repeated_more_players
+      OpenGames.Custom.SequentialAuction_repeated
+      OpenGames.Custom.SequentialAuction
+      OpenGames.Custom.SequentialAuction_continious
+      OpenGames.Custom.SequentialAuction_procurement
       OpenGames.Engine.AtomicGames
       OpenGames.Engine.BayesianGames
       OpenGames.Engine.Diagnostics

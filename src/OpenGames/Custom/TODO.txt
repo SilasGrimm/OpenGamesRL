@@ -1,0 +1,65 @@
+- Verschiedene Hyperparameter testen
+- PD Code auf allgemeine Struktur ändern
+- Hypothesentest / Output distribution mit Hypothesen distribution vergleichen -> Distribution Monad falls weitergehende Funktionen nötig (Varianz etc.)
+
+- verifyStrategy early abort -> Für schnelleres Lernen / frühes aufhören wenn NE erreicht ist
+- Randomisierung des initialen QTables
+
+- Vergleich zu Haskell-Python Bibliothek
+
+- CO2-Zertifikate ähnlich zu Gift Exchange Game -> Check paper
+
+lens and GreedyLens function from policy to strategy
+
+BoS dependentDecision function is const
+
+---------------------------------------
+
+Generell zum Testen nicht direkt lernen, sondern erstmal NE strategien ausprobieren -> Dann lernen
+
+OpenGames beispielgetrieben erklären
+Fur multi-agent besonders sequential auction interessant
+sequential auction in größer als ökonomisches problem aus den optional goals
+
+change feedback component
+
+--------------------------------------
+
+1. Equilibrium händisch ausrechnen und mit OpenGames bibliothek vergleichen 
+2. Open game definition prüfen
+3. Auflösung des Value space etc. prüfen
+-> Vielleicht als Motivation für Deep Q Learning
+
+
+
+
+- Use feedback to only compute payoffs once and set payoffs for each player equal for both rounds
+    -> Overall payoff over multiple rounds instead of one payoff per round
+
+- Randomize payoffs for equal winner bids -> currently all tied players get the payoff for winning in the first round but only one players valuation is set to zero in the second
+    -> DONE, only one players payoff (the one in the first position of the bids array) is unequal to zero for each round
+- Randomize winner picking for equal bids -> create a custom shuffleBids function
+    -> DONE, note that both computePayoffs and getWinner need to align on how the winner is picked in case of ties (both pick the first winner in the bids array) 
+    -> This works because we permutate the bids array with uniform probabilities and apply those functions on the same sampled array
+
+
+---------------------------------------
+
+Erstmal andere use cases suchen -> Leichter use case für kontinuierlichen Zustandsraum
+                                -> Kein Equilibrium für diskretisierten raum 
+                                -> Deswegen nicht weiter untersucht
+
+Paper zu Kompositionalität von Reinforcement Learning
+
+1. Minimalziele formulieren (Bis Zweite Januar Woche)
+
+2. Optionale Ziele: 
+    - Konkret was als optionales Ziel angehen? (Bis Anfang Januar)
+
+---------------------------------------
+
+In the preliminaries section, define extensive form games, subgame perfect nash equilibrium
+In the preliminaries section, define bayesian games
+Prove the proposition that the given mixed strategy of Bach or Stravinsky is an equilibrium
+Write Prisoners Dilemma instead of prisoners dilemma
+Sequential Auction example

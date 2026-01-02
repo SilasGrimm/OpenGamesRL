@@ -23,15 +23,15 @@ data Player = Player1 | Player2 deriving (Eq, Ord, Show) -- player 1 prefers Bac
 data ActionBoS = Bach | Stravinsky deriving (Eq, Ord, Show)
 
 bosPayoffMatrix :: Player -> ActionBoS -> ActionBoS -> Reward
-bosPayoffMatrix Player1 Bach Bach = 3
-bosPayoffMatrix Player1 Bach Stravinsky = 1
+bosPayoffMatrix Player1 Bach Bach = 2
+bosPayoffMatrix Player1 Bach Stravinsky = 0
 bosPayoffMatrix Player1 Stravinsky Bach = 0
-bosPayoffMatrix Player1 Stravinsky Stravinsky = 2
+bosPayoffMatrix Player1 Stravinsky Stravinsky = 1
 
-bosPayoffMatrix Player2 Bach Bach = 2
-bosPayoffMatrix Player2 Bach Stravinsky = 1
+bosPayoffMatrix Player2 Bach Bach = 1
+bosPayoffMatrix Player2 Bach Stravinsky = 0
 bosPayoffMatrix Player2 Stravinsky Bach = 0
-bosPayoffMatrix Player2 Stravinsky Stravinsky = 3
+bosPayoffMatrix Player2 Stravinsky Stravinsky = 2
 
 bachOrStravinsky = [opengame|
     inputs    :    ;
@@ -55,7 +55,7 @@ bachOrStravinsky = [opengame|
 
 initialQTable = Map.fromList [((0, Bach), 0), ((0, Stravinsky), 0)]
 
-bosLens = qLearningLens 0.2 0.95 (const [Bach, Stravinsky])
+bosLens = qLearningLens 0.2 0.2 0.95 (const [Bach, Stravinsky])
 bosGreedyLens = qLearningGreedyLens 0.5 0.95 (const [Bach, Stravinsky])
 
 trainSteps = 150
@@ -111,8 +111,20 @@ alwaysBach = Kleisli $ \() ->
 alwaysStravinsky = Kleisli $ \() ->
   distFromList $ [(Stravinsky, 1), (Bach, 0)] -- models a player that prefers to go to his preferred concert rather than match the interest of the other player
 
+mixedStrategyPreferBach = Kleisli $ \() -> do
+  distFromList [(Stravinsky, 1/3), (Bach, 2/3)]
+
+mixedStrategyPreferStravinsky = Kleisli $ \() -> do
+  distFromList [(Stravinsky, 2/3), (Bach, 1/3)]
+
 stratTuple = strategy1 ::- strategy1 ::- Nil
 stratTuple2 = strategy1 ::- alwaysBach ::- Nil
 stratTuple3 = strategy1 ::- alwaysStravinsky ::- Nil
+
+bothBachStrat = alwaysBach ::- alwaysBach ::- Nil
+bothStravinskyStrat = alwaysStravinsky ::- alwaysStravinsky ::- Nil
+differentStrat = alwaysBach ::- alwaysStravinsky ::- Nil
+
+mixedStrat = mixedStrategyPreferBach ::- mixedStrategyPreferStravinsky ::- Nil
 
 isEquilibriumBoSCustom strategyTuple = generateIsEq $ evaluate bachOrStravinsky strategyTuple void

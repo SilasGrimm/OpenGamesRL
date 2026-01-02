@@ -57,14 +57,14 @@ giftExchangeGame = [opengame|
 initialQTableEmployer = Map.fromList [((0, LowSalary), 0), ((0, HighSalary), 0)]
 initialQTableEmployee = Map.fromList [((LowSalary, LowEffort), 0), ((LowSalary, HighEffort), 0), ((HighSalary, LowEffort), 0), ((HighSalary, HighEffort), 0)]
 
-gegLensEmployer = qLearningLens 0.1 0.5 (const [HighSalary, LowSalary])
+gegLensEmployer = qLearningLens 0.1 0.1 0.5 (const [HighSalary, LowSalary])
 --gegGreedyLensEmployer = qLearningGreedyLens 0.5 0.95 (const [HighSalary, LowSalary]) 
--- employer Learning does not work because greedy lens sets Prob(HighSalary) = 0
--- therefore only epsilon greedy with very small alpha an use epsilon-Nash Equilibrium
-gegGreedyLensEmployer = qLearningLens 0.00001 0.95 (const [HighSalary, LowSalary])
+-- employer Learning does not work because greedy lens sets Prob(HighSalary) = 0 and we condition on this -> division by 0
+-- therefore only epsilon greedy with very small epsilon and use epsilon-Nash Equilibrium
+gegGreedyLensEmployer = qLearningLens 0.00001 0.00001 0.95 (const [HighSalary, LowSalary])
 
 
-gegLensEmployee = qLearningLens 0.2 0.5 (const [HighEffort, LowEffort])
+gegLensEmployee = qLearningLens 0.2 0.2 0.5 (const [HighEffort, LowEffort])
 gegGreedyLensEmployee = qLearningGreedyLens 0.5 0.95 (const [HighEffort, LowEffort])
 
 trainSteps = 350 -- roughly how long it takes to have Prob(LowEffort | HighSalary) > Prob(HighEffort | HighSalary)
@@ -134,9 +134,15 @@ verifyEmployerStrategy ioQ lens opponentStrategy = do
 checkEmployerGEGAgent opponentStrategy = verifyEmployerStrategy (learnEmployerGEGStrategy initialQTableEmployer gegLensEmployer) gegGreedyLensEmployer opponentStrategy
 checkEmployeeGEGAgent opponentStrategy = verifyEmployeeStrategy (learnEmployeeGEGStrategy initialQTableEmployee gegLensEmployee) gegGreedyLensEmployee opponentStrategy
 
+-- changed this to a fully pure strategy by extracting the maximum action which should be executed with a probability of 1
+-- and only putting this action into the distFromList function
+--    -> This is equivalent to what we have done in the opponentStrategies below
 employerStrategyFromLens :: QTable Int EmployerAction -> QLens (QTable Int EmployerAction) Int EmployerAction Reward -> Kleisli Stochastic () EmployerAction
 employerStrategyFromLens q lens = Kleisli $ \() ->
-  distFromList $ deploy lens q 0
+  let actionDist = deploy lens q 0
+      maxReward = maximum $ map snd actionDist
+      maxActionRewardPairDist = filter (\(a, r) -> r == maxReward) actionDist
+  in distFromList maxActionRewardPairDist
 
 employeeStrategyFromLens :: QTable EmployerAction EmployeeAction -> QLens (QTable EmployerAction EmployeeAction) EmployerAction EmployeeAction Reward -> Kleisli Stochastic EmployerAction EmployeeAction
 employeeStrategyFromLens q lens = Kleisli $ \employerAction ->
@@ -144,7 +150,7 @@ employeeStrategyFromLens q lens = Kleisli $ \employerAction ->
 
 -- leads to equilibrium
 -- cant include (HighSalary, 0) in this because for sequential games all paths are evaluated and conditional probabilities computed -> division by 0 results in NaN
---   -> However, behaviour is not changed by this, so this should be okay
+--   -> However, behaviour is not changed by this (is equivalent to a pureAction on LowSalary), so this should be okay
 employerAlwaysLowSalary = Kleisli $ \() ->
   distFromList $ [(LowSalary, 1)]
 

@@ -114,7 +114,7 @@ module OpenGames.Custom.PrisonersDilemmaRepeated where
 
 import OpenGames.Engine.Engine
 import OpenGames.Preprocessor
-import OpenGames.Custom.RLGeneral (Reward, QTable, Sample, qlens, QLens, getMaxRewardAction, computeTarget, deploy, adapt)
+import OpenGames.Custom.RLGeneral (Reward, QTable, Sample, qlens, QLens, computeTarget, deploy, adapt)
 import OpenGames.Custom.PrisonersDilemmaExternal (prisonersDilemmaMatrix, sample)
 
 import           Control.Monad.State  hiding (lift, state,void, State)
