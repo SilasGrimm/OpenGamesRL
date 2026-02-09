@@ -64,18 +64,19 @@ playStep player1QTable player2QTable n = do
                     player1CurrentState = 0 -- note that there is only one state for the prisoners dilemma
                     player2CurrentState = 0 -- note that there is only one state for the prisoners dilemma
                     player1ActionDist = deploy qLearningLensNew player1QTable player1CurrentState
-                    player2ActionDist = deploy qLearningLensNew player2QTable player2CurrentState
+                    -- player2ActionDist = deploy qLearningLensNew player2QTable player2CurrentState
                 -- choose action based on distribution --
                 
                 actionPlayer1 <- sample player1ActionDist
-                actionPlayer2 <- sample player2ActionDist
+                -- actionPlayer2 <- sample player2ActionDist
+                let actionPlayer2 = 1
 
                 let strategy = actionPlayer1 ::- actionPlayer2 ::- Nil
                     nextgame = play prisonersDilemmaExternal strategy
                 ((payoffPlayer1, payoffPlayer2), _) <- extractPayoffAndNextState nextgame () ()
 
                 putStrLn $ "Action1: " ++ show actionPlayer1 ++ " | Reward1: " ++ show payoffPlayer1 ++ " | ActionDist1: " ++ show player1ActionDist
-                putStrLn $ "Action2: " ++ show actionPlayer2 ++ " | Reward2: " ++ show payoffPlayer2 ++ " | ActionDist2: " ++ show player2ActionDist
+                -- putStrLn $ "Action2: " ++ show actionPlayer2 ++ " | Reward2: " ++ show payoffPlayer2 ++ " | ActionDist2: " ++ show player2ActionDist
 
                 let player1q' = adapt qLearningLensNew player1QTable (0, actionPlayer1, payoffPlayer1, 0)
                     player2q' = adapt qLearningLensNew player2QTable (0, actionPlayer2, payoffPlayer2, 0)

@@ -3,7 +3,7 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE LambdaCase #-}
 
-module OpenGames.Custom.SimultaneousAuction_repeated where
+module OpenGames.Custom.FPSBA where
 
 import OpenGames.Engine.Engine
 import OpenGames.Preprocessor
@@ -22,24 +22,29 @@ type PlayerName = String
 type Bid = Int -- The players bid
 type PlayerValuation = Int -- The players internal value of the auction object
 
-computePayoffs :: ([(PlayerName, Bid)], [(PlayerName, PlayerValuation)], Bool) -> [(PlayerName, Double)]
-computePayoffs (_, [], foundWinner) = []
-computePayoffs (playerBids, (v:vs), foundWinner) = 
-  let (playerPayoff, foundWinner') = computePayoff v playerBids foundWinner
-  in (fst v, playerPayoff) : computePayoffs (playerBids, vs, foundWinner')
+computePayoffs :: ([(PlayerName, Bid)], [(PlayerName, PlayerValuation)]) -> [(PlayerName, Double)]
+computePayoffs (_, []) = []
+computePayoffs (playerBids, (v:vs)) = 
+  let playerPayoff = computePayoff v playerBids
+  in (fst v, playerPayoff) : computePayoffs (playerBids, vs)
 
-computePayoff :: (PlayerName, PlayerValuation) -> [(PlayerName, Bid)] -> Bool -> (Double, Bool)
-computePayoff playerInfo xs foundWinner = 
-  if foundWinner then (0.0, foundWinner)
-  else
+computePayoff :: (PlayerName, PlayerValuation) -> [(PlayerName, Bid)] -> Double
+computePayoff playerInfo xs = 
     let playerTuple = getPlayerTuple (fst playerInfo) xs
         playerHasMaxBid = snd playerTuple == maximum (map snd xs)
-    in if playerHasMaxBid then (fromIntegral $ snd playerInfo - snd playerTuple, True) else (0.0, False)
+        amountOfMaxBids = countMax xs
+    in if playerHasMaxBid then fromIntegral (snd playerInfo - snd playerTuple) / fromIntegral amountOfMaxBids else 0.0
 
   where getPlayerTuple :: PlayerName -> [(PlayerName, Bid)] -> (PlayerName, Bid)
         getPlayerTuple _ [] = error "Player not found"
         getPlayerTuple player ((p, b):ps) = 
           if p == player then (p, b) else getPlayerTuple player ps
+        
+        countMax :: Ord b => [(a, b)] -> Int
+        countMax [] = 0
+        countMax xs =
+            let m = maximum (map snd xs)
+            in length (filter ((== m) . snd) xs)
 
 getPlayerPayoff :: PlayerName -> [(PlayerName, Double)] -> Double
 getPlayerPayoff _ [] = 0
@@ -73,6 +78,14 @@ drawPlayerValuationByNature playerName valueSpace = [opengame|
     returns   :    ;
 |]
 
+runForward
+  :: StochasticStatefulOptic s t a b
+  -> s
+  -> Stochastic a
+runForward (StochasticStatefulOptic v _) s = do
+  (_z, a) <- v s
+  pure a
+
 -- bid of player
 biddingStage playerName actionSpace = [opengame|
 
@@ -97,7 +110,7 @@ computeReturns = [opengame|
   feedback  :      ;
 
   :-----------------:
-  inputs    : (bids, valuations, False) ;
+  inputs    : (bids, valuations) ;
   feedback  :      ;
   operation : forwardFunction computePayoffs ;
   outputs   : payments ;
@@ -170,13 +183,7 @@ firstPriceSealedBidAuction valSpace actionSpace = [opengame|
     outputs   :  player2Dec ;
     returns   :  payments  ;
 
-    inputs : ([("Player1",player1Dec),("Player2",player2Dec)], [player1Value, player2Value]) ;
-    feedback : ;
-    operation: transformBids ;
-    outputs : transformedBids ;
-    returns: ;
-
-    inputs    :  transformedBids  ;
+    inputs    :  ([("Player1",player1Dec),("Player2",player2Dec)], [player1Value, player2Value])  ;
     feedback  :      ;
     operation :   computeReturns  ;
     outputs   :  payments ;
@@ -189,7 +196,7 @@ firstPriceSealedBidAuction valSpace actionSpace = [opengame|
 
 initialQTable = Map.fromList [((val, bid), 0) | val <- valueSpace, bid <- actionSpace]
 
-fpsbaLens = qLearningLens' 0.01 0.01 0.2 (const actionSpace) -- gamma is important here because we have a lot of training steps, randomness of opponentAction heavily influences convergence behaviour to Nash Equilibrium during training 
+fpsbaLens = qLearningLens' 0.1 0.1 0.8 (const actionSpace) -- gamma is important here because we have a lot of training steps, randomness of opponentAction heavily influences convergence behaviour to Nash Equilibrium during training 
                                                       -- currently we reach the Nash equilibrium with a probability of around 80% - 90% with 2 players, alpha = 0.05, gamma = 0.9, maxBid = 5 and 10000 training steps
 fpsbaGreedyLens = qLearningGreedyLens' 0.5 0.95 (const actionSpace)
 
@@ -226,23 +233,23 @@ learningStep q lens n = do
 
   chosenAction <- sample actionDist -- sample from distribution
 
+  if chosenAction == opponentAction then learningStep q lens (n - 1)
+  else 
+    let bids = [("Player1", chosenAction), ("Player2", opponentAction)]
+        payoff = computePayoff ("Player1", playerVal) bids
 
-  tieWinner <- randomRIO (0 :: Int, 1) -- winer in case of tie
-  let bids = [("Player1", chosenAction), ("Player2", opponentAction)]
-  let payoff = if chosenAction == opponentAction && tieWinner /= 0 then 0.0 else fst $ computePayoff ("Player1", playerVal) bids False
-
-  -- putStrLn "-----------------"
-  -- putStrLn $ "(Agent Val, Agent Bid): " ++ show (playerVal, chosenAction) ++ " | (OpponentVal, opponentBid): " ++ show (opponentVal, opponentAction)
-  -- putStrLn $ "Agent Payoff: " ++ show payoff
-  -- putStrLn $ "Iteration: " ++ show (trainSteps - n)
-  -- putStrLn $ "Valuation: " ++ show playerVal
-  -- putStrLn $ "QTable: " ++ show (toList q)
-  -- putStrLn $ "QTable Dist: " ++ show actionDist ++ " | " ++ "Chosen Action: " ++ show chosenAction ++ " | " ++ "Payoff: " ++ show payoff
+    -- putStrLn "-----------------"
+    -- putStrLn $ "(Agent Val, Agent Bid): " ++ show (playerVal, chosenAction) ++ " | (OpponentVal, opponentBid): " ++ show (opponentVal, opponentAction)
+    -- putStrLn $ "Agent Payoff: " ++ show payoff
+    -- putStrLn $ "Iteration: " ++ show (trainSteps - n)
+    -- putStrLn $ "Valuation: " ++ show playerVal
+    -- putStrLn $ "QTable: " ++ show (toList q)
+    -- putStrLn $ "QTable Dist: " ++ show actionDist ++ " | " ++ "Chosen Action: " ++ show chosenAction ++ " | " ++ "Payoff: " ++ show payoff
 
 
-  let q' = adapt' lens q (playerVal, chosenAction, payoff, Nothing)
+        q' = adapt' lens q (playerVal, chosenAction, payoff, Nothing)
 
-  learningStep q' lens (n - 1)
+    in learningStep q' lens (n - 1)
 
 verifyStrategy :: IO (QTable Int Int) -> QLens' (QTable Int Int) Int Int Reward -> Kleisli Stochastic (PlayerName, PlayerValuation) Int -> IO ()
 verifyStrategy ioQ lens opponentStrategy = do

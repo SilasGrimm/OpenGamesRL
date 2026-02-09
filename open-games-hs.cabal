@@ -31,6 +31,21 @@ library
       OpenGames.Custom.BoS_repeated
       OpenGames.Custom.Gift_exchange_game_repeated
       OpenGames.Custom.SimultaneousAuction_repeated
+      OpenGames.Custom.FPSBA
+      OpenGames.Custom.FPSBA_comp
+      OpenGames.Custom.HUBA_comp
+      OpenGames.Custom.QLearningGame
+      OpenGames.Custom.RLGeneral_new
+      OpenGames.Custom.PD_compositional
+      OpenGames.Custom.PD_compositional_new
+      OpenGames.Custom.QLens_compositional
+      OpenGames.Custom.PrisonersDilemma_new_comp
+      OpenGames.Custom.BoS_comp
+      OpenGames.Custom.Gift_exchange_game_comp
+      OpenGames.Custom.Automated_QOptimizer_Bimatrix
+      OpenGames.Custom.Automated_QOptimizer_StrategicGame
+      OpenGames.Custom.Automated_QOptimizer_ExtensiveGame
+      OpenGames.Custom.QLearning_compositional.MonadicLens
       OpenGames.Custom.SimultaneousAuction_repeated_more_players
       OpenGames.Custom.SequentialAuction_repeated
       OpenGames.Custom.SequentialAuction
@@ -78,6 +93,7 @@ library
   build-depends:
       QuickCheck
     , ad
+    , array
     , base >=4.7 && <5
     , comonad
     , containers
@@ -112,6 +128,7 @@ executable open-games-exe
   build-depends:
       QuickCheck
     , ad
+    , array
     , base >=4.7 && <5
     , comonad
     , containers

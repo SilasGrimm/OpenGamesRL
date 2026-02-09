@@ -21,6 +21,8 @@ module OpenGames.Engine.Diagnostics
   , generatePayoff
   , nextState
   , nextContinuation
+  , PrintIsEq(..)
+  , Concat(..)
   ) where
 
 import OpenGames.Engine.OpticClass

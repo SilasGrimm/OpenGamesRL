@@ -58,8 +58,163 @@ Paper zu Kompositionalität von Reinforcement Learning
 
 ---------------------------------------
 
-In the preliminaries section, define extensive form games, subgame perfect nash equilibrium
-In the preliminaries section, define bayesian games
-Prove the proposition that the given mixed strategy of Bach or Stravinsky is an equilibrium
-Write Prisoners Dilemma instead of prisoners dilemma
-Sequential Auction example
+In Preliminaries chapter, Open Games section, briefly refer to the paper "Bayesian open games" to show that the previously introduced concepts have to be extended for open games to be ablte to support games, however a proper introduction of this is out of scope of this thesis
+    -> Maybe properly introduce as well
+
+Learning Simulatenous Auction:
+    Reason for discrete value and action space: Granularity of computers, decreased computational demands
+
+In the preliminaries section, machine learning section, add a paragraph that briefly introduces hyperparameters in the reinforcement learning setting
+
+Stilistic:
+    Write Prisoners Dilemma instead of prisoners dilemma
+
+---------------------------------------
+
+Show current progress to Felix 
+    -> Is structure okay? 
+       How to handle big code fragments? As Figure and let latex decide where to put them? Or in appendix?
+       In general too much or too less depth? -> Only minimal goals will be around 60 - 70 pages, with optional goals (Multi-agent, Deep Q-Learning, real life use case, Functor between Open game and q-learning structure) probably a bit over 100 pages
+        -> Write as much as possible, it should be less than 100 pages of pure text
+
+Ask regarding Bayesian open games for preliminaries section
+
+
+ 
+Was kommt in welchem Kapitel? -> In introduction als zweites unterkapitel
+Related work auch in introduction
+
+Verification -> Checking
+
+Wichtige Datenstrukturen der Category Theory in Haskell definieren -> Lenses etc. Chapter 4
+
+Section 5 erstmal nicht zu detailliert machen -> Wird von optionalem Ziel der Generalisierung beinflusst
+
+Deep Learning mit lenses geht, aber schwierig -> ohne lens structure geht es einfacher
+
+Generalisierung:
+    1. Open game lens analysieren
+    2. Typen, vorwärtsrichtung etc.
+    3. 
+
+Optionale Ziele Reihenfolge:
+    1. Generalisierung
+    2. Deep Q-Learning
+    3. Multi-agent games
+    4. Open game Anwendungsfall:
+        CO2-Zertifikate:
+            1. Initiale Verteilung an Spieler
+            2. Nutzung der CO2-Zertifikat basierend auf parametern
+            3. Auktion der CO2-Zertifikate
+            4. Nutzung der CO2-Zertifikat basierend auf parametern
+
+Spiel ab gewissem Punkt nur als Diagramm -> Zugehöriger Code kann daraus abgeleitet zu werden
+Nicht zu viele figures hintereinander, lieber logisch in text einbetten
+Nicht zu tief in die Category Theory -> Was für diagramme dürfen gemalt werden? -> Split/Join
+    Bausteine identifizieren -> Funktionen sind blöcke etc. 
+
+
+NOTE:
+    - DO not use te word "verify" in the context of strategy evaluation -> instead use "check"
+
+-> TODO:
+        Finish Q-Learning chapter
+
+        Read all chapters and correct grammar, formulation, figure position etc. (09.01)
+
+        Change q learning deploy function to return only one action
+
+        Preliminaries, Category Theory section: (10.01 - 14.01)
+            More detail -> Introduce everything needed for string diagrams (monoidal categories etc.)
+                        From there on, do not use any concepts expect string diagrams to explain Open Games etc.
+
+        Preliminaries, Reinforcement Learning: Add epsilon-greedy strategies and explain
+
+        Preliminaries, Open Games section: (14.01 - 18.01)
+            Detailed introduction to Bayesian games based on string diagrams (no proofs etc.)
+
+        Send current progress to Felix (18.01)
+
+        Optional goals:
+            1. Generalisierung (19.01 - 24.01) -> Check website regarding Van Laarhoven lenses and think about whether we need to implement them to find a functor from open games to q learning lenses
+            2. Deep Q-Learning (25.01 - 30.01)
+            3. Multi-agent games (01.02 - 03.02)
+            4. Open game Anwendungsfall (05.02 - 15.02)
+
+        Add modifications from Felix' side (25.01 - 30.01)
+        
+        Write Scope and Objectives and Related Work sections (15.02 - 20.02)
+
+        Proof read (20.02 - 28.02)
+
+Questions:
+    Bayesian games introduction okay to skip? Else too detailled
+    Lens definition -> Sketch from CyberCat institute
+                       What exactly must be implemented as a lens (show rl cybernetics paper) ?
+                       Does the whole training loop have to be a lens (e.g. with the open games library as agent and environment)?
+                       Can we implement the lenses together based on my additions to the sketch from CyberCat institute?
+
+
+
+    Mein qUpdate etc. als lens möglich? -> Momentane große Q-Learning lens aus kleineren Modellieren (siehe Jules' implementierung)
+    Nicht in OpenGames lernen -> bisheriges externes lernen ist richtig
+    Q-Learning lens Anzahl eingehender Kanten je nach Parametern der Agenten als dependentDecision etc. -> Immer auf parameter der strategien schauen
+
+    Schreiben:
+        Die große Q-Learning lens selber ist nicht compositional (das sieht man auch an der bisherigen Implementierung mit Old-style lenses, oder an dem Diagram)
+            -> Stattdessen sind die einzelnen Schritte, die in Q-Learning benötigt werden kompositionierbar -> Q-Table update, learning rate, bellman target
+            -> Definition zeigen und erklären
+        Reinforcement learning ist Optimieren der Parameter für die dependentDecisions, und Q-Learning gibt Methode um dies zu tun
+
+        
+
+    Bis nächste Woche (möglich?):
+        Q-Learning lens für beliebige Parameter und Vergleich -> Momentane Lens umimplementieren in Jules' Lens
+            Keine geklebten Kanten (siehe aktuellen Q-Table und gift-exchange vs prisoners dilemma) -> Führt zu explosion des state spaces
+
+        Kannst man aus basic open games komponenten automatisch Q-Learning definieren 
+            -> Beispiel: Kann man aus dem dependentDecision operator automatisch den entsprechenden Optimierer (Q-Learning) für den dependentDecision-Agenten definieren?
+            -> Beispielsweise mit pattern matching etc.
+
+        Herausfinden wann ich abgeben darf, mit Felix besprechen -> Möglicherweise Vortrag vorziehen, Vortrag immer Dienstags
+
+    Übernächste Woche: Sprechen über aktuellen Stand der Arbeit
+
+-----------------------------
+Bezüglich frühester Abgabe keine Informationen in der Prüfungsordnung gefunden
+
+Abgabe am 01.03, Präsentation am 10.03 möglich?
+
+Implemented automated Q-Learning for bimatrix games (although also possible for strategic games in general) and sequential two-player games (also possible for more players)
+-> When learning, we use the play function to get the logic of the game without knowing the internals
+-> The only requirements are that the game returns the payoff for the decision maker to learn, and the strategies for all other players need to be provided
+
+Should I still introduce the old-style lenses or directly start with my implementation?
+
+Q-Learning can not learn mixed strategies? -> Bach or Stravinsky example
+
+Still cant reach equilibrium for auction -> Planning on using this as a motivation for Deep Q-Learning if enough time is left at the end
+                                         -> If not, plan to just explain why this happens and reference as possible future work
+
+
+Felix fragt nach bezüglich Abgabefrist
+Präsentation am 10.03
+
+Future work teil -> Identifizieren anderer Komponenten für weitere reinforcement learning algorithmen
+                 -> Vergleich zu Q-Learning
+                 -> Typ der OpenGames lenses/Strategien gibt reinforcement learning typen vor
+                 -> Spiele die nicht mit Q-Learning gelernt werden können
+                 -> Wie weit ist die Forschung im Kategorientheoretischen Reinforcement learning? -> Welche Komponenten etc.
+                 -> Template Haskell um Automatisierung für n Spieler zu machen (Metaprogrammierung)
+
+Automated games nochmal mit 3 Spielern und irgendwelchen Spielen
+
+Im Evaluationsteil:
+    Probabilistische Evaluation -> Experiment section mit unterschiedlichen Hyperparametern etc.
+                                -> Wie ist die Varianz der Q-Table werte etc.?
+                                -> Wie wahrscheinlich landet es im Equilibrium?
+
+Evaluation -> Future Work -> Conclusion
+
+Learning, Automation, Future Work -> Dann bis zum 18.02 Felix schicken
+Wenn nächste Woche kein Gesprächsbedarf -> Email an Felix schreiben

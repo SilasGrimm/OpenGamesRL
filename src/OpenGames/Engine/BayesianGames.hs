@@ -15,6 +15,7 @@ module OpenGames.Engine.BayesianGames
   , Agent(..)
   , Payoff(..)
   , dependentDecision
+  -- , dependentDecisionCustom
   , dependentRoleDecision
   , dependentEpsilonDecision
   , fromLens
@@ -98,6 +99,23 @@ dependentDecision name ys = OpenGame {
                    strategy = runKleisli a x
                   in deviationsInContext 0 name x theta strategy u (ys x)
               | (theta, x) <- support h]) ::- Nil }
+
+
+
+-- dependentDecisionCustom :: (Eq x, Show x, Ord y, Show y) => List '[Kleisli Stochastic x y] -> String -> (x -> [y]) -> StochasticStatefulBayesianOpenGame '[Kleisli Stochastic x y] '[[DiagnosticInfoBayesian x y]] x () y Payoff
+-- dependentDecisionCustom (a ::- Nil) name ys = OpenGame {
+--   play = \Nil -> let v x = do {y <- runKleisli a x; return ((), y)}
+--                      u () r = modify (adjustOrAdd (+ r) r name)
+--                   in StochasticStatefulOptic v u,
+--   evaluate = \Nil (StochasticStatefulContext h k) ->
+--      (concat [ let u y = expected (evalStateT (do {t <- lift (bayes h x);
+--                                                    r <- k t y;
+--                                                    gets ((+ r) . HM.findWithDefault 0.0 name)})
+--                                     HM.empty)
+--                    strategy = runKleisli a x
+--                   in deviationsInContext 0 name x theta strategy u (ys x)
+--               | (theta, x) <- support h]) ::- Nil }
+
 
 -- Main decision operator with role dependency; so that player's roles can be part of the input
 -- TODO needs testing

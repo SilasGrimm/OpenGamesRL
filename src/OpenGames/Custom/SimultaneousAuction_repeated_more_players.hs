@@ -250,6 +250,8 @@ verifyStrategy ioQ lens opponentStrategy = do
 -- learn a epsilon greedy strategy (configured by bosLens) and then use the learned qTable greedily (configured by bosGreedyLens) to reach the nash equilibrium
 checkFPSBAAgentMoreThanTwo opponentStrategy = verifyStrategy (learnFPSBAStrategy initialQTable fpsbaLens) fpsbaGreedyLens opponentStrategy
 
+checkEquilibriumStrategy strategy = isEquilibriumFPSBACustom (strategy ::- strategy ::- strategy ::- strategy ::- Nil)
+
 strategyFromLens :: QTable Int Int -> QLens (QTable Int Int) Int Int Reward -> Kleisli Stochastic (PlayerName, PlayerValuation) Int
 strategyFromLens q lens = Kleisli $ \(s, v) ->
   distFromList $ deploy lens q v
@@ -258,11 +260,11 @@ opponentAlwaysBid2 :: Kleisli Stochastic (PlayerName, PlayerValuation) Int
 opponentAlwaysBid2 = Kleisli $ \(p, v) -> 
   distFromList $ [(2, 1.0)]
 
--- optimal Strategy
 opponentAlwaysBidThird :: Kleisli Stochastic (PlayerName, PlayerValuation) Int
 opponentAlwaysBidThird = Kleisli $ \(p, v) -> 
   distFromList $ [(2 * div v 3, 1.0)]
 
+-- optimal Strategy
 opponentAlwaysBidFourth :: Kleisli Stochastic (PlayerName, PlayerValuation) Int
 opponentAlwaysBidFourth = Kleisli $ \(p, v) -> 
   distFromList $ [(3 * div v 4, 1.0)]

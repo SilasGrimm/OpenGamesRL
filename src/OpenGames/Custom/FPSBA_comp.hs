@@ -2,12 +2,19 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE GADTs #-}
 
-module OpenGames.Custom.SimultaneousAuction_repeated where
+module OpenGames.Custom.FPSBA_comp where
 
 import OpenGames.Engine.Engine
 import OpenGames.Preprocessor
 import OpenGames.Custom.RLGeneral
+import OpenGames.Custom.QLens_compositional
 import OpenGames.Engine.BayesianGames (dependentDecision)
 import Examples.Auctions.AuctionSupportFunctions
 import Data.Map (Map, toList)
@@ -189,9 +196,11 @@ firstPriceSealedBidAuction valSpace actionSpace = [opengame|
 
 initialQTable = Map.fromList [((val, bid), 0) | val <- valueSpace, bid <- actionSpace]
 
-fpsbaLens = qLearningLens' 0.01 0.01 0.2 (const actionSpace) -- gamma is important here because we have a lot of training steps, randomness of opponentAction heavily influences convergence behaviour to Nash Equilibrium during training 
+fpsbaLens :: CustomLens (QTable Int Int) (QTable Int Int) (Int -> [(Int, Double)]) (Int, Int, Double, Maybe Int)
+fpsbaLens = customQLens 0.1 0.95 0.1 (const actionSpace) -- gamma is important here because we have a lot of training steps, randomness of opponentAction heavily influences convergence behaviour to Nash Equilibrium during training 
                                                       -- currently we reach the Nash equilibrium with a probability of around 80% - 90% with 2 players, alpha = 0.05, gamma = 0.9, maxBid = 5 and 10000 training steps
-fpsbaGreedyLens = qLearningGreedyLens' 0.5 0.95 (const actionSpace)
+fpsbaGreedyLens :: CustomLens (QTable Int Int) (QTable Int Int) (Int -> [(Int, Double)]) (Int, Int, Double, Maybe Int)
+fpsbaGreedyLens = customQLens 0.1 0.95 0.0 (const actionSpace)
 
 
 -- for 2 players, maxBid = 6, alpha = 0.05, gamma = 0.9 and 100000 training steps we reach the Nash Equilibrium with a probability of around 80% - 90%
@@ -199,14 +208,14 @@ fpsbaGreedyLens = qLearningGreedyLens' 0.5 0.95 (const actionSpace)
 
 trainSteps = 500000
 
-learnFPSBAStrategy :: QTable Int Int -> QLens' (QTable Int Int) Int Int Reward -> IO (QTable Int Int)
+learnFPSBAStrategy :: QTable Int Int -> CustomLens (QTable Int Int) (QTable Int Int) (Int -> [(Int, Double)]) (Int, Int, Double, Maybe Int) -> IO (QTable Int Int)
 learnFPSBAStrategy q lens = do
   learningStep q lens trainSteps -- train epsilon greedy for 350 steps/iterations of the game (since BoS is an one-shot game)
   -- whether we reach the equilibrium heavily depends on the first action chosen and on the amount of steps to learn
   -- this is because a wrong/suboptimal first choice still has positive reward, which leads the Q-Learning algorithm to choose this action again with high probability 
 
 -- plays n games and returns learned strategy
-learningStep :: QTable Int Int -> QLens' (QTable Int Int) Int Int Reward -> Int -> IO (QTable Int Int)
+learningStep :: QTable Int Int -> CustomLens (QTable Int Int) (QTable Int Int) (Int -> [(Int, Double)]) (Int, Int, Double, Maybe Int) -> Int -> IO (QTable Int Int)
 learningStep q lens 0 = return q
 learningStep q lens n = do
   playerValIndex <- randomRIO (0, length valueSpace - 1)
@@ -214,7 +223,7 @@ learningStep q lens n = do
 
   let
     playerVal = valueSpace !! playerValIndex 
-    actionDist = deploy' lens q playerVal
+    actionDist = view lens q playerVal
 
 
   -- opponentAction <- randomRIO (1, maxBid) -- random opponentAction
@@ -240,11 +249,11 @@ learningStep q lens n = do
   -- putStrLn $ "QTable Dist: " ++ show actionDist ++ " | " ++ "Chosen Action: " ++ show chosenAction ++ " | " ++ "Payoff: " ++ show payoff
 
 
-  let q' = adapt' lens q (playerVal, chosenAction, payoff, Nothing)
+  let q' = over lens (const (playerVal, chosenAction, payoff, Nothing)) q
 
   learningStep q' lens (n - 1)
 
-verifyStrategy :: IO (QTable Int Int) -> QLens' (QTable Int Int) Int Int Reward -> Kleisli Stochastic (PlayerName, PlayerValuation) Int -> IO ()
+verifyStrategy :: IO (QTable Int Int) -> CustomLens (QTable Int Int) (QTable Int Int) (Int -> [(Int, Double)]) (Int, Int, Double, Maybe Int) -> Kleisli Stochastic (PlayerName, PlayerValuation) Int -> IO ()
 verifyStrategy ioQ lens opponentStrategy = do
     q <- ioQ
     putStrLn $ "Verified Q: " ++ show (toList q)
@@ -257,9 +266,9 @@ checkFPSBAAgent opponentStrategy = verifyStrategy (learnFPSBAStrategy initialQTa
 
 checkEquilibriumStrategy strategy = isEquilibriumFPSBACustom (strategy ::- strategy ::- Nil)
 
-strategyFromLens :: QTable Int Int -> QLens' (QTable Int Int) Int Int Reward -> Kleisli Stochastic (PlayerName, PlayerValuation) Int
+strategyFromLens :: QTable Int Int -> CustomLens (QTable Int Int) (QTable Int Int) (Int -> [(Int, Double)]) (Int, Int, Double, Maybe Int) -> Kleisli Stochastic (PlayerName, PlayerValuation) Int
 strategyFromLens q lens = Kleisli $ \(s, v) ->
-  distFromList $ deploy' lens q v
+  distFromList $ view lens q v
 
 opponentAlwaysBid2 :: Kleisli Stochastic (PlayerName, PlayerValuation) Int
 opponentAlwaysBid2 = Kleisli $ \(p, v) -> 
