@@ -191,12 +191,6 @@ Implemented automated Q-Learning for bimatrix games (although also possible for 
 
 Should I still introduce the old-style lenses or directly start with my implementation?
 
-Q-Learning can not learn mixed strategies? -> Bach or Stravinsky example
-
-Still cant reach equilibrium for auction -> Planning on using this as a motivation for Deep Q-Learning if enough time is left at the end
-                                         -> If not, plan to just explain why this happens and reference as possible future work
-
-
 Felix fragt nach bezüglich Abgabefrist
 Präsentation am 10.03
 
@@ -218,3 +212,64 @@ Evaluation -> Future Work -> Conclusion
 
 Learning, Automation, Future Work -> Dann bis zum 18.02 Felix schicken
 Wenn nächste Woche kein Gesprächsbedarf -> Email an Felix schreiben
+
+
+Is it okay to use "we"? -> Ist okay
+Still cant reach equilibrium for auction -> Länger lernen lassen und early abort mit generateEqString, execution time messen
+
+Q-Learning can not learn mixed strategies? -> Bach or Stravinsky example
+                                           -> In Future work packen
+
+01.03 Abgeben
+10.03 Vortrag
+
+
+
+Introduction: 
+    Kleine stilistiche Anpassungen
+        -> Wörter wie "verify" etc. vermeiden
+
+Preliminaries:
+    Game Theory: 
+        Osborne genauer zitieren (Kapitel, Definitionsnummer etc.)
+        Am Anfang sagen dass wir mit strategic games of perfect information anfangen
+    
+    Category Theory:
+        Kleinere Ungenauigkeiten beseitigen
+    
+    Open Games:
+        Kleinere Ungenauigkeiten beseitigen
+            -> Unit anstatt leere Menge etc.
+    
+    Machine Learning:
+        Remove Deep Learning section and rename chapter to Reinforcement learning
+
+    Symbols and Conventions:
+    
+
+Equilibrium checking with the OpenGames library:
+    Check game definitions and payoff matrices
+
+
+Mehr Zeilenumbrüche/Absätze
+Referenzen an Tabellen, Payoff matrixen, Code -> Wenn man "in Kapitel ..." schreibt sollte man lieber eine Referenz nutzen
+Mengennotation überarbeiten -> Einelementige Menge ordentlich definieren -> 1 ist Menge mit Unit (weil Element aus Haskell) -> {()} muss nicht mehr benutzt werden
+Open games -> Gucken ob gesagt wird, dass Open games in Set sind
+           -> Sagen, dass wir in Set sind
+
+Vortrag: 
+    Überblick -> Was wollten wir untersuchen -> Forschungsfrage: Kann man Open Games mit Q-Learning lernen 
+                                             -> Verschiedene Klassen von Spielen
+                                             -> Konkrete Beispiele -> Ergebnisse
+                                             -> Ausblick -> Simultaneous Auction genauer betrachten als Abschlussausblick
+
+    Auflisten, was alles getan wurde, aber nur drei Spiele 
+        -> Bach or Stravinsky, Gift-exchange game und Simultaenous Auction, da wir Prisoners Dilemma schon im Einführungsvortrag gemacht haben
+
+    Equilibrium check funktioniert für simple Spiele gut, für komplexere Spiele noch zu ineffizient
+
+    Monolithic lenses zu composable lenses
+
+    Evaluationsteil
+
+    

@@ -64,7 +64,7 @@ runOptimizerForExtensiveGame ::
          [DiagnosticInfoBayesian action' action]]
        ()
        ()
-       Double
+       (action, action', Double)
        ()
     -> Kleisli Stochastic () action'
     -> IO (Kleisli Stochastic action' action)
@@ -86,7 +86,8 @@ runOptimizerForExtensiveGame game opponentStrategy = do
 trainSteps = 200
 
 learnStrategy :: 
-    OpenGame
+    (Show action, Show action')
+    => OpenGame
        StochasticStatefulOptic
        StochasticStatefulContext
        '[Kleisli Stochastic () action',
@@ -95,7 +96,7 @@ learnStrategy ::
          [DiagnosticInfoBayesian action' action]]
        ()
        ()
-       Double
+       (action, action', Double)
        ()
     -> QTable action' action 
     -> CustomLens (QTable action' action) (QTable action' action) (action' -> [(action, Double)]) (action', action, Double, Maybe action')
@@ -109,7 +110,8 @@ learnStrategy game q lens possibleActions opponentStrategy = do
 
 -- plays n games and returns learned strategy
 learningStep :: 
-    OpenGame
+    (Show action, Show action')
+    => OpenGame
        StochasticStatefulOptic
        StochasticStatefulContext
        '[Kleisli Stochastic () action',
@@ -118,7 +120,7 @@ learningStep ::
          [DiagnosticInfoBayesian action' action]]
        ()
        ()
-       Double
+       (action, action', Double)
        ()
     -> QTable action' action 
     -> CustomLens (QTable action' action) (QTable action' action) (action' -> [(action, Double)]) (action', action, Double, Maybe action')
@@ -128,16 +130,19 @@ learningStep ::
     -> IO (QTable action' action)
 learningStep _ q lens _ _ 0 = return q
 learningStep game q lens possibleActions opponentStrategy n = do
-  opponentAction <- sample $ decons $ runKleisli opponentStrategy ()
-  let actionDist = view lens q opponentAction
+  -- opponentAction <- sample $ decons $ runKleisli opponentStrategy ()
+  -- let actionDist = view lens q opponentAction
 
-  chosenAction <- sample actionDist -- sample from distribution
+  -- chosenAction <- sample actionDist -- sample from distribution
 
-  let agentStrat = Kleisli $ \_ -> distFromList [(chosenAction, 1.0)] -- choose samplede strat with probability 1
-      opponentStrat = Kleisli $ \_ -> distFromList [(opponentAction, 1.0)]
-      gameOptic = play game (opponentStrat ::- agentStrat ::- Nil)
-      gamePayoff = decons $ runForward gameOptic () -- relies on the game to output the payoffs for the player that should be learned
-  payoff <- sample gamePayoff
+  -- let agentStrat = Kleisli $ \_ -> distFromList [(chosenAction, 1.0)] -- choose samplede strat with probability 1
+  let agentStrat = strategyFromLens q lens
+      -- opponentStrat = Kleisli $ \_ -> distFromList [(opponentAction, 1.0)]
+      gameOptic = play game (opponentStrategy ::- agentStrat ::- Nil)
+      gameResultDist = decons $ runForward gameOptic () -- relies on the game to output the payoffs for the player that should be learned
+  (chosenAction, opponentAction, payoff) <- sample gameResultDist
+
+  putStrLn $ show gameResultDist
 
 --   putStrLn $ "Iteration: " ++ show (trainSteps - n)
 --   putStrLn $ "QTable: " ++ show (toList q)
@@ -166,7 +171,7 @@ verifyStrategy ::
          [DiagnosticInfoBayesian action' action]]
        ()
        ()
-       Double
+       (action, action', Double)
        ()
     -> Kleisli Stochastic () action'
     -> IO ()

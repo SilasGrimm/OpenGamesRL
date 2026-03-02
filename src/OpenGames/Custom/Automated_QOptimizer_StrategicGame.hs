@@ -177,6 +177,26 @@ prisonersDilemmaInternal = [opengame|
    returns   :    ;
 |]
 
+prisonersDilemmaInternalWithAgentAction = [opengame|
+   inputs    :    ;
+   feedback  :    ;
+   :----------------------------:
+   inputs    :    ;
+   feedback  :    ;
+   operation : dependentDecision "player1" (const [StaySilent, Testify]) ;
+   outputs   : decisionPlayer1 ;
+   returns   : prisonersDilemmaMatrix decisionPlayer1 decisionPlayer2 ;
+
+   inputs    :     ;
+   feedback  :     ;
+   operation : dependentDecision "player2" (const [StaySilent, Testify]) ;
+   outputs   : decisionPlayer2 ;
+   returns   : prisonersDilemmaMatrix decisionPlayer2 decisionPlayer1 ;
+   :----------------------------:
+   outputs   :  (decisionPlayer1, prisonersDilemmaMatrix decisionPlayer1 decisionPlayer2)  ;
+   returns   :    ;
+|]
+
 data DiffActionPlayer1 = Action11 | Action12 deriving (Eq, Ord, Show, Enum, Bounded)
 data DiffActionPlayer2 = Action21 | Action22 deriving (Eq, Ord, Show, Enum, Bounded)
 
@@ -224,6 +244,6 @@ giftExchangeGame = [opengame|
     outputs   : decisionEmployee ;
     returns   : gegPayoffMatrix Employee decisionEmployer decisionEmployee ;
     :----------------------------:
-    outputs   :  gegPayoffMatrix Employee decisionEmployer decisionEmployee  ;
+    outputs   :  (decisionEmployee, decisionEmployer, gegPayoffMatrix Employee decisionEmployer decisionEmployee)  ;
     returns   :    ;
 |]

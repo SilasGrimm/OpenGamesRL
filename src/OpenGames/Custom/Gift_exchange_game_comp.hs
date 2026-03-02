@@ -66,20 +66,17 @@ initialQTableEmployee = Map.fromList [((LowSalary, LowEffort), 0), ((LowSalary, 
 
 gegLensEmployer:: CustomLens (QTable Int EmployerAction) (QTable Int EmployerAction) (Int -> [(EmployerAction, Double)]) (Int, EmployerAction, Double, Maybe Int)
 gegLensEmployer = customQLens 0.1 0.8 0.1 (const [HighSalary, LowSalary])
---gegGreedyLensEmployer = qLearningGreedyLens 0.5 0.95 (const [HighSalary, LowSalary]) 
--- employer Learning does not work because greedy lens sets Prob(HighSalary) = 0 and we condition on this -> division by 0
--- therefore only epsilon greedy with very small epsilon and use epsilon-Nash Equilibrium
 
 gegGreedyLensEmployer:: CustomLens (QTable Int EmployerAction) (QTable Int EmployerAction) (Int -> [(EmployerAction, Double)]) (Int, EmployerAction, Double, Maybe Int)
 gegGreedyLensEmployer = customQLens 0.1 0.95 0.0 (const [HighSalary, LowSalary])
 
 gegLensEmployee :: CustomLens (QTable EmployerAction EmployeeAction) (QTable EmployerAction EmployeeAction) (EmployerAction -> [(EmployeeAction, Double)]) (EmployerAction, EmployeeAction, Double, Maybe EmployerAction)
-gegLensEmployee = customQLens 0.1 0.95 0.1 (const [HighEffort, LowEffort])
+gegLensEmployee = customQLens 0.99 0.95 0.1 (const [HighEffort, LowEffort])
 
 gegGreedyLensEmployee :: CustomLens (QTable EmployerAction EmployeeAction) (QTable EmployerAction EmployeeAction) (EmployerAction -> [(EmployeeAction, Double)]) (EmployerAction, EmployeeAction, Double, Maybe EmployerAction)
 gegGreedyLensEmployee = customQLens 0.1 0.95 0.0 (const [HighEffort, LowEffort])
 
-trainSteps = 350 -- roughly how long it takes to have Prob(LowEffort | HighSalary) > Prob(HighEffort | HighSalary)
+trainSteps = 150
 
 learnEmployerGEGStrategy :: 
     QTable Int EmployerAction 
@@ -159,6 +156,13 @@ checkEmployeeGEGAgent opponentStrategy = verifyEmployeeStrategy (learnEmployeeGE
 -- changed this to a fully pure strategy by extracting the maximum action which should be executed with a probability of 1
 -- and only putting this action into the distFromList function
 --    -> This is equivalent to what we have done in the opponentStrategies below
+strategyFromLens :: 
+    QTable Int EmployerAction 
+    -> CustomLens (QTable Int EmployerAction) (QTable Int EmployerAction) (Int -> [(EmployerAction, Double)]) (Int, EmployerAction, Double, Maybe Int)
+    -> Kleisli Stochastic () EmployerAction
+strategyFromLens q lens = Kleisli $ \() ->
+  distFromList $ view lens q 0
+
 employerStrategyFromLens :: QTable Int EmployerAction -> CustomLens (QTable Int EmployerAction) (QTable Int EmployerAction) (Int -> [(EmployerAction, Double)]) (Int, EmployerAction, Double, Maybe Int) -> Kleisli Stochastic () EmployerAction
 employerStrategyFromLens q lens = Kleisli $ \() ->
   let actionDist = view lens q 0

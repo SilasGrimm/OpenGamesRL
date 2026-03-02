@@ -21,6 +21,9 @@ import Data.Map (Map, toList)
 import qualified Data.Map as Map
 
 import System.Random (randomRIO)
+import Control.Monad (when)
+import Text.Printf (printf)
+import Data.List (isInfixOf)
 
 import qualified Control.Applicative as Vector
 import OpenGames.Custom.RLGeneral (qLearningLens, qLearningGreedyLens)
@@ -197,7 +200,7 @@ firstPriceSealedBidAuction valSpace actionSpace = [opengame|
 initialQTable = Map.fromList [((val, bid), 0) | val <- valueSpace, bid <- actionSpace]
 
 fpsbaLens :: CustomLens (QTable Int Int) (QTable Int Int) (Int -> [(Int, Double)]) (Int, Int, Double, Maybe Int)
-fpsbaLens = customQLens 0.1 0.95 0.1 (const actionSpace) -- gamma is important here because we have a lot of training steps, randomness of opponentAction heavily influences convergence behaviour to Nash Equilibrium during training 
+fpsbaLens = customQLens 0.001 0.99 0.1 (const actionSpace) -- gamma is important here because we have a lot of training steps, randomness of opponentAction heavily influences convergence behaviour to Nash Equilibrium during training 
                                                       -- currently we reach the Nash equilibrium with a probability of around 80% - 90% with 2 players, alpha = 0.05, gamma = 0.9, maxBid = 5 and 10000 training steps
 fpsbaGreedyLens :: CustomLens (QTable Int Int) (QTable Int Int) (Int -> [(Int, Double)]) (Int, Int, Double, Maybe Int)
 fpsbaGreedyLens = customQLens 0.1 0.95 0.0 (const actionSpace)
@@ -206,7 +209,7 @@ fpsbaGreedyLens = customQLens 0.1 0.95 0.0 (const actionSpace)
 -- for 2 players, maxBid = 6, alpha = 0.05, gamma = 0.9 and 100000 training steps we reach the Nash Equilibrium with a probability of around 80% - 90%
 -- a small increase in state space size makes it much harder to find the Nash Equilibrium -> more training steps, smaller learning rate and smaller epsilon required to reach same probability as with maxBid = 5
 
-trainSteps = 500000
+trainSteps = 10
 
 learnFPSBAStrategy :: QTable Int Int -> CustomLens (QTable Int Int) (QTable Int Int) (Int -> [(Int, Double)]) (Int, Int, Double, Maybe Int) -> IO (QTable Int Int)
 learnFPSBAStrategy q lens = do
@@ -218,40 +221,42 @@ learnFPSBAStrategy q lens = do
 learningStep :: QTable Int Int -> CustomLens (QTable Int Int) (QTable Int Int) (Int -> [(Int, Double)]) (Int, Int, Double, Maybe Int) -> Int -> IO (QTable Int Int)
 learningStep q lens 0 = return q
 learningStep q lens n = do
-  playerValIndex <- randomRIO (0, length valueSpace - 1)
-  -- opponentValIndex <- randomRIO (0, length valueSpace - 1)
+  ------- early abort check ----------
+  let currentStrat = strategyFromLens q fpsbaGreedyLens -- need to use the greedy lens here
+  if isEquilibriumBool (currentStrat ::- opponentAlwaysBidHalf ::- Nil) 
+    then do
+      putStrLn $ "Early abort at " ++ printf "%.2f" ((fromIntegral (trainSteps - n) / fromIntegral trainSteps) * 100.0 :: Double) ++ "%"
+      return q 
+  
+    else do
+      playerValIndex <- randomRIO (0, length valueSpace - 1)
+      -- opponentValIndex <- randomRIO (0, length valueSpace - 1)
 
-  let
-    playerVal = valueSpace !! playerValIndex 
-    actionDist = view lens q playerVal
-
-
-  -- opponentAction <- randomRIO (1, maxBid) -- random opponentAction
-  opponentValIndex <- randomRIO (0, length valueSpace - 1)
-  let 
-    opponentVal = valueSpace !! opponentValIndex -- random opponentAction
-    opponentAction = div opponentVal 2 -- let opponent bid the nash equilibrium bid
-
-
-  chosenAction <- sample actionDist -- sample from distribution
+      let
+        playerVal = valueSpace !! playerValIndex 
+        actionDist = view lens q playerVal
 
 
-  tieWinner <- randomRIO (0 :: Int, 1) -- winer in case of tie
-  let bids = [("Player1", chosenAction), ("Player2", opponentAction)]
-  let payoff = if chosenAction == opponentAction && tieWinner /= 0 then 0.0 else fst $ computePayoff ("Player1", playerVal) bids False
-
-  -- putStrLn "-----------------"
-  -- putStrLn $ "(Agent Val, Agent Bid): " ++ show (playerVal, chosenAction) ++ " | (OpponentVal, opponentBid): " ++ show (opponentVal, opponentAction)
-  -- putStrLn $ "Agent Payoff: " ++ show payoff
-  -- putStrLn $ "Iteration: " ++ show (trainSteps - n)
-  -- putStrLn $ "Valuation: " ++ show playerVal
-  -- putStrLn $ "QTable: " ++ show (toList q)
-  -- putStrLn $ "QTable Dist: " ++ show actionDist ++ " | " ++ "Chosen Action: " ++ show chosenAction ++ " | " ++ "Payoff: " ++ show payoff
+      -- opponentAction <- randomRIO (1, maxBid) -- random opponentAction
+      opponentValIndex <- randomRIO (0, length valueSpace - 1)
+      let 
+        opponentVal = valueSpace !! opponentValIndex -- random opponentAction
+        opponentAction = div opponentVal 2 -- let opponent bid the nash equilibrium bid
 
 
-  let q' = over lens (const (playerVal, chosenAction, payoff, Nothing)) q
+      chosenAction <- sample actionDist -- sample from distribution
 
-  learningStep q' lens (n - 1)
+      -- if chosenAction == opponentAction then learningStep q' lens (n - 1)
+      -- else do
+
+      when (mod (trainSteps - n) 1 == 0) $ putStrLn $ "Iteration progress: " ++ printf "%.2f" ((fromIntegral (trainSteps - n) / fromIntegral trainSteps) * 100.0 :: Double) ++ "%"
+      tieWinner <- randomRIO (0 :: Int, 1) -- winner in case of tie
+      let bids = [("Player1", chosenAction), ("Player2", opponentAction)]
+      let payoff = if chosenAction == opponentAction && tieWinner /= 0 then 0.0 else fst $ computePayoff ("Player1", playerVal) bids False
+
+      let q' = over lens (const (playerVal, chosenAction, payoff, Nothing)) q
+
+      seq q' (learningStep q' lens (n - 1))
 
 verifyStrategy :: IO (QTable Int Int) -> CustomLens (QTable Int Int) (QTable Int Int) (Int -> [(Int, Double)]) (Int, Int, Double, Maybe Int) -> Kleisli Stochastic (PlayerName, PlayerValuation) Int -> IO ()
 verifyStrategy ioQ lens opponentStrategy = do
@@ -288,3 +293,13 @@ opponentAlwaysBidValuation = Kleisli $ \(p, v) ->
   distFromList $ [(v , 1.0)]
 
 isEquilibriumFPSBACustom strategyTuple = generateIsEq $ evaluate (firstPriceSealedBidAuction valueSpace actionSpace) strategyTuple void
+
+isEquilibriumBool strategyTuple = generateEquilibrium $ evaluate (firstPriceSealedBidAuction valueSpace actionSpace) strategyTuple void
+
+-- isEquilibriumString strategyTuple = isEquilibrium $ generateIsEqString $ evaluate (firstPriceSealedBidAuction valueSpace actionSpace) strategyTuple void
+--   where 
+--     isEquilibrium :: String -> Bool
+--     isEquilibrium s
+--       | "Strategies are in equilibrium"     `isInfixOf` s = True
+--       | "Strategies are NOT in equilibrium" `isInfixOf` s = False
+--       | otherwise = error "Unknown analytics result format"
