@@ -16,6 +16,7 @@ import OpenGames.Preprocessor
 
 import OpenGames.Custom.PrisonersDilemma_new_comp
 import OpenGames.Custom.BoS_comp
+import OpenGames.Custom.Gift_exchange_game_comp
 
 prisonersDilemmaInternalWithOutput = [opengame|
    inputs    :    ;
@@ -54,5 +55,25 @@ bachOrStravinskyWithOutputs = [opengame|
     returns   : bosPayoffMatrix Player2 decisionPlayer1 decisionPlayer2 ;
     :----------------------------:
     outputs   :  (decisionPlayer1, bosPayoffMatrix Player1 decisionPlayer1 decisionPlayer2)  ;
+    returns   :    ;
+|]
+
+giftExchangeGameWithOutputs = [opengame|
+    inputs    :    ;
+    feedback  :    ;
+    :----------------------------:
+    inputs    :    ;
+    feedback  :    ;
+    operation : dependentDecision "employer" (const [HighSalary, LowSalary]) ;
+    outputs   : decisionEmployer ;
+    returns   : gegPayoffMatrix Employer decisionEmployer decisionEmployee ;
+
+    inputs    :  decisionEmployer  ;
+    feedback  :     ;
+    operation : dependentDecision "employee" (const [HighEffort, LowEffort]) ;
+    outputs   : decisionEmployee ;
+    returns   : gegPayoffMatrix Employee decisionEmployer decisionEmployee ;
+    :----------------------------:
+    outputs   :  (decisionEmployee, decisionEmployer, gegPayoffMatrix Employee decisionEmployer decisionEmployee)  ;
     returns   :    ;
 |]

@@ -104,9 +104,7 @@ learnStrategy ::
     -> Kleisli Stochastic () action'
     -> IO (QTable action' action)
 learnStrategy game q lens possibleActions opponentStrategy = do
-  learningStep game q lens possibleActions opponentStrategy trainSteps -- train epsilon greedy for 150 steps/iterations of the game (since BoS is an one-shot game)
-  -- whether we reach the equilibrium heavily depends on the first action chosen and on the amount of steps to learn
-  -- this is because a wrong/suboptimal first choice still has positive reward, which leads the Q-Learning algorithm to choose this action again with high probability 
+  learningStep game q lens possibleActions opponentStrategy trainSteps
 
 -- plays n games and returns learned strategy
 learningStep :: 
@@ -130,23 +128,10 @@ learningStep ::
     -> IO (QTable action' action)
 learningStep _ q lens _ _ 0 = return q
 learningStep game q lens possibleActions opponentStrategy n = do
-  -- opponentAction <- sample $ decons $ runKleisli opponentStrategy ()
-  -- let actionDist = view lens q opponentAction
-
-  -- chosenAction <- sample actionDist -- sample from distribution
-
-  -- let agentStrat = Kleisli $ \_ -> distFromList [(chosenAction, 1.0)] -- choose samplede strat with probability 1
   let agentStrat = strategyFromLens q lens
-      -- opponentStrat = Kleisli $ \_ -> distFromList [(opponentAction, 1.0)]
       gameOptic = play game (opponentStrategy ::- agentStrat ::- Nil)
-      gameResultDist = decons $ runForward gameOptic () -- relies on the game to output the payoffs for the player that should be learned
+      gameResultDist = decons $ runForward gameOptic ()
   (chosenAction, opponentAction, payoff) <- sample gameResultDist
-
-  putStrLn $ show gameResultDist
-
---   putStrLn $ "Iteration: " ++ show (trainSteps - n)
---   putStrLn $ "QTable: " ++ show (toList q)
---   putStrLn $ "QTable Dist: " ++ show actionDist ++ " | " ++ "Chosen Action: " ++ show chosenAction ++ " | " ++ "Payoff: " ++ show payoff
 
   let q' = over lens (const (opponentAction, chosenAction, payoff, Nothing)) q
 
