@@ -148,43 +148,43 @@ evaluateGEG opponentStrat = do
 
 -- FPSBA takes too long to evaluate
 
--- evaluationFPSBA :: Kleisli Stochastic (FPSBA.PlayerName, FPSBA.PlayerValuation) FPSBA.Bid -> Int -> [([((FPSBA.PlayerValuation, FPSBA.Bid), Double)], Bool)] -> IO ([Double], [Double], [Double], Double)
--- evaluationFPSBA _ 0 acc = do
---     -- putStrLn $ show acc
+evaluationFPSBA :: Kleisli Stochastic (FPSBA.PlayerName, FPSBA.PlayerValuation) FPSBA.Bid -> Int -> [([((FPSBA.PlayerValuation, FPSBA.Bid), Double)], Bool)] -> IO ([Double], [Double], [Double], Double)
+evaluationFPSBA _ 0 acc = do
+    -- putStrLn $ show acc
 
---     let groupTuples :: Ord a => [(a, b)] -> [[(a, b)]]
---         groupTuples = groupBy ((==) `on` fst) . sortBy (compare `on` fst)
+    let groupTuples :: Ord a => [(a, b)] -> [[(a, b)]]
+        groupTuples = groupBy ((==) `on` fst) . sortBy (compare `on` fst)
 
 
---     let stateActionVals = groupTuples $ concatMap fst acc
---         sums = (Map.toList . Map.fromListWith (+) . concat) stateActionVals
+    let stateActionVals = groupTuples $ concatMap fst acc
+        sums = (Map.toList . Map.fromListWith (+) . concat) stateActionVals
 
---     putStrLn $ show sums
---         -- means = map (\s -> (fst s, snd s / (fromIntegral (length acc)))) sums
+    putStrLn $ show sums
+        -- means = map (\s -> (fst s, snd s / (fromIntegral (length acc)))) sums
 
---         -- getMean :: (GEG.EmployerAction, GEG.EmployeeAction) -> Double
---         -- getMean k = Map.findWithDefault 0 k (Map.fromList means)
+        -- getMean :: (GEG.EmployerAction, GEG.EmployeeAction) -> Double
+        -- getMean k = Map.findWithDefault 0 k (Map.fromList means)
 
---         -- varianceSum = map (foldl (\acc' v -> ((snd v - getMean (fst v))**2 + acc')) 0.0) stateActionVals
---         -- variance = map (\s -> s / (fromIntegral (length acc - 1))) varianceSum
+        -- varianceSum = map (foldl (\acc' v -> ((snd v - getMean (fst v))**2 + acc')) 0.0) stateActionVals
+        -- variance = map (\s -> s / (fromIntegral (length acc - 1))) varianceSum
 
---         -- equilibriumProb = (foldl (\acc' (q, isEquilibrium) -> if isEquilibrium then acc' + 1 else acc') 0 acc) / fromIntegral (length acc)
+        -- equilibriumProb = (foldl (\acc' (q, isEquilibrium) -> if isEquilibrium then acc' + 1 else acc') 0 acc) / fromIntegral (length acc)
 
---     -- return (map snd means, variance, map sqrt variance, equilibriumProb)
---     return ([], [], [], 1.0)
+    -- return (map snd means, variance, map sqrt variance, equilibriumProb)
+    return ([], [], [], 1.0)
     
 
--- evaluationFPSBA opponentStrat n acc = do
---     result <- evaluateFPSBA opponentStrat
---     evaluationFPSBA opponentStrat (n - 1) (result : acc)
+evaluationFPSBA opponentStrat n acc = do
+    result <- evaluateFPSBA opponentStrat
+    evaluationFPSBA opponentStrat (n - 1) (result : acc)
 
--- evaluateFPSBA :: Kleisli Stochastic (FPSBA.PlayerName, FPSBA.PlayerValuation) FPSBA.Bid -> IO ([((FPSBA.PlayerValuation, FPSBA.Bid), Double)], Bool)
--- evaluateFPSBA opponentStrat = do
+evaluateFPSBA :: Kleisli Stochastic (FPSBA.PlayerName, FPSBA.PlayerValuation) FPSBA.Bid -> IO ([((FPSBA.PlayerValuation, FPSBA.Bid), Double)], Bool)
+evaluateFPSBA opponentStrat = do
 
---     learnedQ <- FPSBA.learnFPSBAStrategy FPSBA.initialQTable FPSBA.fpsbaLens
---     let strat = FPSBA.strategyFromLens learnedQ FPSBA.fpsbaGreedyLens
---         strategyTuple = strat ::- opponentStrat ::- Nil
+    learnedQ <- FPSBA.learnFPSBAStrategy FPSBA.initialQTable FPSBA.fpsbaLens
+    let strat = FPSBA.strategyFromLens learnedQ FPSBA.fpsbaGreedyLens
+        strategyTuple = strat ::- opponentStrat ::- Nil
 
---         isEquilibrium = generateEquilibrium $ evaluate (FPSBA.firstPriceSealedBidAuction FPSBA.valueSpace FPSBA.actionSpace) strategyTuple void
+        isEquilibrium = generateEquilibrium $ evaluate (FPSBA.firstPriceSealedBidAuction FPSBA.valueSpace FPSBA.actionSpace) strategyTuple void
 
---     return (Map.toList learnedQ, isEquilibrium)
+    return (Map.toList learnedQ, isEquilibrium)
