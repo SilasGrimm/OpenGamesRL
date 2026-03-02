@@ -131,7 +131,6 @@ employeeLearningStep q lens n = do
   putStrLn $ "QTable Dist: " ++ show actionDist ++ " | " ++ "Chosen Action: " ++ show chosenAction ++ " | " ++ "Payoff: " ++ show payoff
 
   let q' = over lens (const (opponentAction, chosenAction, payoff, Nothing)) q
-      -- q'' = adapt lens q' (HighSalary, chosenAction, gegPayoffMatrix Employee HighSalary chosenAction, HighSalary)
 
   employeeLearningStep  q' lens (n - 1)
 

@@ -82,9 +82,7 @@ learnBoSStrategy ::
     -> Kleisli Stochastic () ActionBoS
     -> IO (QTable Int ActionBoS)
 learnBoSStrategy q lens opponentStrategy = do
-  learningStep q lens trainSteps opponentStrategy -- train epsilon greedy for 150 steps/iterations of the game (since BoS is an one-shot game)
-  -- whether we reach the equilibrium heavily depends on the first action chosen and on the amount of steps to learn
-  -- this is because a wrong/suboptimal first choice still has positive reward, which leads the Q-Learning algorithm to choose this action again with high probability 
+  learningStep q lens trainSteps opponentStrategy
 
 -- plays n games and returns learned strategy
 learningStep :: 
@@ -96,8 +94,6 @@ learningStep ::
 learningStep q lens 0 _ = return q
 learningStep q lens n opponentStrategy = do
   let actionDist = view lens q 0
-      -- opponentAction = Stravinsky -- The case where to opponent always chooses our preference (Bach) is exactly like the prisoners dilemma, because our reward for choosing Stravinsky is then 0
-                                  -- MUST MATCH THE CHOSEN STRATEGY -> TODO: choose based on strategy
       opponentActionDist = decons $ runKleisli opponentStrategy ()
   opponentAction <- sample opponentActionDist
 
@@ -167,36 +163,37 @@ isEquilibriumBoSCustom strategyTuple = generateIsEq $ evaluate bachOrStravinsky 
 
 
 -- learning mixed strategies seems difficult
--- learnBoSStrategyMixed :: 
---     QTable Int ActionBoS 
---     -> CustomLens (QTable Int ActionBoS) (QTable Int ActionBoS) (Int -> [(ActionBoS, Double)]) (Int, ActionBoS, Double, Maybe Int) 
---     -> Kleisli Stochastic () ActionBoS 
---     -> IO (QTable Int ActionBoS)
--- learnBoSStrategyMixed q lens opponentStrategy = do
---   learningStepMixed q lens 100000 opponentStrategy
 
--- learningStepMixed :: 
---   QTable Int ActionBoS 
---     -> CustomLens (QTable Int ActionBoS) (QTable Int ActionBoS) (Int -> [(ActionBoS, Double)]) (Int, ActionBoS, Double, Maybe Int) 
---     -> Int 
---     -> Kleisli Stochastic () ActionBoS 
---     -> IO (QTable Int ActionBoS)
--- learningStepMixed q lens 0 _  = return q
--- learningStepMixed q lens n opponentStrategy = do
---   let actionDist = view lens q 0
+learnBoSStrategyMixed :: 
+    QTable Int ActionBoS 
+    -> CustomLens (QTable Int ActionBoS) (QTable Int ActionBoS) (Int -> [(ActionBoS, Double)]) (Int, ActionBoS, Double, Maybe Int) 
+    -> Kleisli Stochastic () ActionBoS 
+    -> IO (QTable Int ActionBoS)
+learnBoSStrategyMixed q lens opponentStrategy = do
+  learningStepMixed q lens 100000 opponentStrategy
 
---   -- prob <- randomRIO(0.0 :: Double, 1.0 :: Double)
---   -- let opponentAction = if prob <= 2 / 3 then Stravinsky else Bach -- modelling mixed strategy
---   let opponentActionDist = decons $ runKleisli opponentStrategy ()
---   opponentAction <- sample opponentActionDist
---   chosenAction <- sample actionDist -- sample from distribution
+learningStepMixed :: 
+  QTable Int ActionBoS 
+    -> CustomLens (QTable Int ActionBoS) (QTable Int ActionBoS) (Int -> [(ActionBoS, Double)]) (Int, ActionBoS, Double, Maybe Int) 
+    -> Int 
+    -> Kleisli Stochastic () ActionBoS 
+    -> IO (QTable Int ActionBoS)
+learningStepMixed q lens 0 _  = return q
+learningStepMixed q lens n opponentStrategy = do
+  let actionDist = view lens q 0
 
---   let payoff = bosPayoffMatrix Player1 chosenAction opponentAction
+  -- prob <- randomRIO(0.0 :: Double, 1.0 :: Double)
+  -- let opponentAction = if prob <= 2 / 3 then Stravinsky else Bach -- modelling mixed strategy
+  let opponentActionDist = decons $ runKleisli opponentStrategy ()
+  opponentAction <- sample opponentActionDist
+  chosenAction <- sample actionDist -- sample from distribution
 
---   putStrLn $ "Iteration: " ++ show (trainSteps - n)
---   putStrLn $ "QTable: " ++ show (toList q)
---   putStrLn $ "QTable Dist: " ++ show actionDist ++ " | " ++ "Chosen Action: " ++ show chosenAction ++ " | " ++ "Payoff: " ++ show payoff
+  let payoff = bosPayoffMatrix Player1 chosenAction opponentAction
 
---   let q' = over lens (const (0, chosenAction, payoff, Nothing)) q
+  putStrLn $ "Iteration: " ++ show (trainSteps - n)
+  putStrLn $ "QTable: " ++ show (toList q)
+  putStrLn $ "QTable Dist: " ++ show actionDist ++ " | " ++ "Chosen Action: " ++ show chosenAction ++ " | " ++ "Payoff: " ++ show payoff
 
---   learningStepMixed q' lens (n - 1) opponentStrategy
+  let q' = over lens (const (0, chosenAction, payoff, Nothing)) q
+
+  learningStepMixed q' lens (n - 1) opponentStrategy

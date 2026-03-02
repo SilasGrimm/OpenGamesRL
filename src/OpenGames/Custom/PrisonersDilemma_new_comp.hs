@@ -77,9 +77,6 @@ learnPDStrategyComp q lens = do
 learningStepComp :: QTable State Action -> CustomLens (QTable State Action) (QTable State Action) (State -> [(Action, Double)]) (State, Action, Double, Maybe State) -> Int -> IO (QTable State Action)
 learningStepComp q lens 0 = return q
 learningStepComp q lens n = do
---   let qFocus = view lens q -- forward pass returns a function that allows looking into the qTable
---       actionDist = createProbabilitiesFromRewards [ (a, qFocus (0, a))
---                 | a <- [Testify, StaySilent] ] 0.1
   let actionDist = (view lens q) 0 -- forward pass returns a function that takes the current state and outputs the policy, which maps states to proabability distributions
 
       opponentAction = Testify
@@ -103,7 +100,7 @@ verifyStrategy ioQ lens = do
 
     isEquilibriumPrisonersDilemmaCustom (learnedStrategy ::- alwaysTestify ::- Nil)
 
-checkPDAgent = verifyStrategy (learnPDStrategyComp initialQTable pdLens) pdLens
+checkPDAgent = verifyStrategy (learnPDStrategyComp initialQTable pdLens) pdLensGreedy
 
 strategyFromLens :: QTable State Action -> CustomLens (QTable State Action) (QTable State Action) (State -> [(Action, Double)]) (State, Action, Double, Maybe State) -> Kleisli Stochastic () Action
 strategyFromLens q lens = Kleisli $ \() ->

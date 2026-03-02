@@ -28,7 +28,7 @@ import Data.Ord (comparing)
 
 import Data.IORef
 
-import OpenGames.Custom.PrisonersDilemma_new
+-- import OpenGames.Custom.PrisonersDilemma_new
 
 import OpenGames.Custom.RLGeneral
 

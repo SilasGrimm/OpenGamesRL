@@ -14,23 +14,23 @@ library:
   exposed-modules:
     - OpenGames.Custom.ModifiedRLLens
     - OpenGames.Custom.RLLens
-    - OpenGames.Custom.PrisonersDilemmaRepeated
-    - OpenGames.Custom.PrisonersDilemma
-    - OpenGames.Custom.PrisonersDilemmaExternal
-    - OpenGames.Custom.OptionExercise
+    # - OpenGames.Custom.PrisonersDilemmaRepeated
+    # - OpenGames.Custom.PrisonersDilemma
+    # - OpenGames.Custom.PrisonersDilemmaExternal
+    # - OpenGames.Custom.OptionExercise
     - OpenGames.Custom.RLGeneral
-    - OpenGames.Custom.PD_repeated
-    - OpenGames.Custom.PrisonersDilemma_new
-    - OpenGames.Custom.BoS_repeated
-    - OpenGames.Custom.Gift_exchange_game_repeated
-    - OpenGames.Custom.SimultaneousAuction_repeated
-    - OpenGames.Custom.FPSBA
+    # - OpenGames.Custom.PD_repeated
+    # - OpenGames.Custom.PrisonersDilemma_new
+    # - OpenGames.Custom.BoS_repeated
+    # - OpenGames.Custom.Gift_exchange_game_repeated
+    # - OpenGames.Custom.SimultaneousAuction_repeated
+    # - OpenGames.Custom.FPSBA
     - OpenGames.Custom.FPSBA_comp
-    - OpenGames.Custom.HUBA_comp
+    # - OpenGames.Custom.HUBA_comp
     - OpenGames.Custom.QLearningGame
-    - OpenGames.Custom.RLGeneral_new
-    - OpenGames.Custom.PD_compositional
-    - OpenGames.Custom.PD_compositional_new
+    # - OpenGames.Custom.RLGeneral_new
+    # - OpenGames.Custom.PD_compositional
+    # - OpenGames.Custom.PD_compositional_new
     - OpenGames.Custom.QLens_compositional
     - OpenGames.Custom.PrisonersDilemma_new_comp
     - OpenGames.Custom.BoS_comp
@@ -39,12 +39,13 @@ library:
     - OpenGames.Custom.Automated_QOptimizer_StrategicGame
     - OpenGames.Custom.Automated_QOptimizer_ExtensiveGame
     - OpenGames.Custom.Evaluation_PD
-    - OpenGames.Custom.QLearning_compositional.MonadicLens
-    - OpenGames.Custom.SimultaneousAuction_repeated_more_players
-    - OpenGames.Custom.SequentialAuction_repeated
-    - OpenGames.Custom.SequentialAuction
-    - OpenGames.Custom.SequentialAuction_continious
-    - OpenGames.Custom.SequentialAuction_procurement
+    - OpenGames.Custom.Games_with_outputs
+    # - OpenGames.Custom.QLearning_compositional.MonadicLens
+    # - OpenGames.Custom.SimultaneousAuction_repeated_more_players
+    # - OpenGames.Custom.SequentialAuction_repeated
+    # - OpenGames.Custom.SequentialAuction
+    # - OpenGames.Custom.SequentialAuction_continious
+    # - OpenGames.Custom.SequentialAuction_procurement
     - OpenGames.Engine.AtomicGames
     - OpenGames.Engine.BayesianGames
     - OpenGames.Engine.Diagnostics
