@@ -32,16 +32,6 @@ computeTarget q gamma getActions (s, a, r, s') =
                     _  -> maximum [ Map.findWithDefault 0 (s', a') q | a' <- actions ]
     in r + gamma * maxNext
 
--- getMaxRewardAction :: (Ord state, Ord action) => QTable state action -> state -> action
--- getMaxRewardAction q s = let 
---     list = Map.toList q
---     filteredList = filter (\((s', a), r) -> s == s') list
-
---     maxStateActionRewardPair = foldl (\acc ((s, a), r) -> if r > snd acc then ((s, a), r) else acc) (head filteredList) filteredList
-
---   in snd $ fst maxStateActionRewardPair 
-
-
 qUpdate :: (Ord state, Ord action)
         => Alpha
         -> QTable state action
