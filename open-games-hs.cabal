@@ -30,7 +30,7 @@ library
       OpenGames.Custom.Gift_exchange_game_comp
       OpenGames.Custom.Automated_QOptimizer_Bimatrix
       OpenGames.Custom.Automated_QOptimizer_ExtensiveGame
-      OpenGames.Custom.Evaluation_PD
+      OpenGames.Custom.Evaluation
       OpenGames.Custom.Games_with_outputs
       OpenGames.Engine.AtomicGames
       OpenGames.Engine.BayesianGames

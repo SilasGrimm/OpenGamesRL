@@ -9,7 +9,7 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE GADTs #-}
 
-module OpenGames.Custom.Evaluation_PD where
+module OpenGames.Custom.Evaluation where
 
 import OpenGames.Custom.PrisonersDilemma_new_comp
 import qualified OpenGames.Custom.BoS_comp as BoS

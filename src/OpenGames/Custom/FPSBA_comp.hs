@@ -256,7 +256,7 @@ verifyStrategy ioQ lens opponentStrategy = do
 
 checkFPSBAAgent opponentStrategy = verifyStrategy (learnFPSBAStrategy initialQTable fpsbaLens) fpsbaGreedyLens opponentStrategy
 
-checkEquilibriumStrategy strategy = isEquilibriumFPSBACustom (strategy ::- strategy ::- Nil)
+checkFPSBAEquilibriumStrategy strategy = isEquilibriumFPSBACustom (strategy ::- strategy ::- Nil)
 
 strategyFromLens :: QTable Int Int -> CustomLens (QTable Int Int) (QTable Int Int) (Int -> [(Int, Double)]) (Int, Int, Double, Maybe Int) -> Kleisli Stochastic (PlayerName, PlayerValuation) Int
 strategyFromLens q lens = Kleisli $ \(s, v) ->

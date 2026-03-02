@@ -38,7 +38,7 @@ library:
     - OpenGames.Custom.Automated_QOptimizer_Bimatrix
     # - OpenGames.Custom.Automated_QOptimizer_StrategicGame
     - OpenGames.Custom.Automated_QOptimizer_ExtensiveGame
-    - OpenGames.Custom.Evaluation_PD
+    - OpenGames.Custom.Evaluation
     - OpenGames.Custom.Games_with_outputs
     # - OpenGames.Custom.QLearning_compositional.MonadicLens
     # - OpenGames.Custom.SimultaneousAuction_repeated_more_players
